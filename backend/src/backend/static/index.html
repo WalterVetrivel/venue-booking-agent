@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KIOT Venue Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+<body>
+  <header>
+    <h1>KIOT Venue Booking</h1>
+    <nav id="nav" hidden>
+      <a href="#calendar">Calendar</a>
+      <a href="#book">Book</a>
+      <a href="#mine">My bookings</a>
+      <a href="#approvals" data-role="in_charge admin">Approvals</a>
+      <a href="#timetables" data-role="admin">Timetables</a>
+      <a href="#faculty" data-role="admin">Faculty</a>
+      <a href="#notices">Notices</a>
+    </nav>
+    <div id="who"></div>
+  </header>
+
+  <main>
+    <section id="view-login" class="view">
+      <div class="card narrow">
+        <h2>Sign in</h2>
+        <p>Use your college Google account. Only faculty on the list can sign in.</p>
+        <div id="google-button"></div>
+        <form id="dev-login" hidden>
+          <p class="muted">Development sign-in (DEV_LOGIN is on)</p>
+          <input name="email" type="email" placeholder="email on the faculty list" required>
+          <button>Sign in</button>
+        </form>
+        <p id="login-error" class="error"></p>
+      </div>
+    </section>
+
+    <section id="view-calendar" class="view" hidden>
+      <div class="toolbar">
+        <label>Venue <select id="cal-venue"></select></label>
+        <span class="legend"><i class="confirmed"></i>Confirmed <i class="pending"></i>Waiting for approval <i class="class"></i>Class</span>
+      </div>
+      <div id="calendar"></div>
+    </section>
+
+    <section id="view-book" class="view" hidden>
+      <form id="book-form" class="card">
+        <h2>Request a venue</h2>
+        <div class="grid">
+          <label class="wide">Event title <input name="title" required minlength="3"></label>
+          <label>Category
+            <select name="category">
+              <option value="guest_lecture">Guest lecture</option><option value="workshop">Workshop</option>
+              <option value="seminar">Seminar</option><option value="fdp">FDP</option>
+              <option value="training">Training</option><option value="hackathon">Hackathon</option>
+              <option value="contest">Contest</option><option value="assessment">Assessment</option>
+              <option value="value_added_course">Value-added course</option><option value="meeting">Meeting</option>
+              <option value="inauguration">Inauguration</option><option value="other">Other</option>
+            </select>
+          </label>
+          <label>Format
+            <select name="format"><option value="talk">Talk</option><option value="hands-on">Hands-on</option><option value="mixed">Mixed</option></select>
+          </label>
+          <label>Expected headcount <input name="expected_headcount" type="number" min="1" required></label>
+          <label>Significance
+            <select name="significance"><option value="1">Routine</option><option value="2">Department level</option><option value="3">Institution level / VIP</option></select>
+          </label>
+          <label>Date <input name="date" type="date" required></label>
+          <label>Start <input name="start" type="time" required step="300"></label>
+          <label>End <input name="end" type="time" required step="300"></label>
+          <label class="wide">Venue <select name="venue_id" required></select></label>
+          <label class="wide">Co-organisers (emails, comma separated) <input name="co_organisers"></label>
+          <label class="wide">Description <textarea name="description" rows="2"></textarea></label>
+        </div>
+        <div id="book-check" class="check"></div>
+        <div class="actions">
+          <button type="button" id="check-btn" class="secondary">Check availability</button>
+          <button>Send request</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="view-mine" class="view" hidden><div class="card"><h2>My bookings</h2><div id="mine-list"></div></div></section>
+    <section id="view-approvals" class="view" hidden><div class="card"><h2>Waiting for your approval</h2><div id="approvals-list"></div></div></section>
+
+    <section id="view-timetables" class="view" hidden>
+      <div class="card">
+        <h2>Timetables</h2>
+        <form id="tt-upload" class="inline">
+          <input type="file" name="file" accept="application/pdf" required>
+          <button>Upload and read</button>
+        </form>
+        <p id="tt-result" class="muted"></p>
+        <div id="tt-list"></div>
+      </div>
+      <div class="card">
+        <h2>Slots to review</h2>
+        <p class="muted">Cells the reader couldn't place. They don't block bookings until you approve them.</p>
+        <div id="tt-review"></div>
+      </div>
+    </section>
+
+    <section id="view-faculty" class="view" hidden>
+      <div class="card">
+        <h2>Faculty list</h2>
+        <form id="fac-add" class="inline">
+          <input name="name" placeholder="Name" required>
+          <input name="email" type="email" placeholder="Email" required>
+          <input name="department" placeholder="Dept">
+          <select name="role"><option value="faculty">Faculty</option><option value="in_charge">In-charge</option><option value="admin">Admin</option></select>
+          <button>Add</button>
+        </form>
+        <div id="fac-list"></div>
+      </div>
+    </section>
+
+    <section id="view-notices" class="view" hidden><div class="card"><h2>Notices</h2><div id="notices-list"></div></div></section>
+  </main>
+
+  <dialog id="dialog"><form method="dialog" id="dialog-body"></form></dialog>
+  <div id="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

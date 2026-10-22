@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from backend import booking, seed
 from backend.app import app
-from backend.config import get_settings
+from backend.config import REPO_ROOT, get_settings
 from backend.db import get_db
 from backend.models import Faculty, Venue
 
@@ -118,3 +118,26 @@ def test_admin_manages_the_allowlist(people):
     assert TestClient(app).post("/auth/dev-login", json={"email": "new.person@example.com"}).status_code == 403
     me = admin.get("/me").json()
     assert admin.patch(f"/admin/faculty/{me['id']}", json={"role": "faculty"}).status_code == 409
+
+
+def test_ui_is_served(api):
+    r = TestClient(app).get("/")
+    assert r.status_code == 200 and "KIOT Venue Booking" in r.text
+
+
+def test_admin_uploads_and_reviews_timetables(people, api, monkeypatch, tmp_path):
+    monkeypatch.setattr(get_settings(), "data_dir", tmp_path)
+    admin = client(people["admin"])
+    assert client(people["alice"]).get("/admin/timetables").status_code == 403
+    pdf = REPO_ROOT / "data" / "mock" / "timetables" / "TT_CSE_II_YR_A.pdf"
+    r = admin.post("/admin/timetables", files={"file": (pdf.name, pdf.read_bytes(), "application/pdf")})
+    assert r.status_code == 201 and r.json()["active"] == 5 and r.json()["class"] == "CSE II A"
+    assert [d["name"] for d in admin.get("/admin/timetables").json()] == [pdf.name]
+    assert admin.get("/admin/timetable-slots").json() == []  # nothing to review
+
+    slot = admin.get("/admin/timetable-slots", params={"status": "active", "source": pdf.name}).json()[0]
+    r = admin.patch(f"/admin/timetable-slots/{slot['id']}", json={"status": "pending_review"})
+    assert r.json()["status"] == "pending_review"
+    assert [s["id"] for s in admin.get("/admin/timetable-slots").json()] == [slot["id"]]
+    assert admin.patch(f"/admin/timetable-slots/{slot['id']}", json={"end_time": "08:00"}).status_code == 422
+    assert admin.post("/admin/timetables", files={"file": ("x.txt", b"hi", "text/plain")}).status_code == 422

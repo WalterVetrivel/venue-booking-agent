@@ -18,6 +18,17 @@ uv run alembic upgrade head     # create the schema
 uv run python -m backend.seed --with-past-events   # faculty, venues, lab timetable slots, past events
 ```
 
+## Run the API
+
+```
+cd backend
+uv run uvicorn backend.app:app --reload
+```
+
+The API docs are at http://localhost:8000/docs. To try it without Google Sign-In, set `DEV_LOGIN=true` in `.env`
+and sign in with `POST /auth/dev-login` using an email on the faculty list. Pending requests expire after 48 hours
+(the in-charge is reminded at 24); a background job checks every 10 minutes.
+
 ## Tests
 
 The tests migrate a separate `venue_test` database from scratch and roll back after each test.

@@ -10,3 +10,9 @@ def make_engine(url: str | None = None):
 
 engine = make_engine()
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+
+
+def get_db():
+    """A request-scoped session: committed when the request succeeds, rolled back if it raises."""
+    with SessionLocal.begin() as session:
+        yield session

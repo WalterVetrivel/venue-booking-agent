@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     data_dir: Path = REPO_ROOT / "data"
     embedding_dim: int = 384  # bge-small-en-v1.5
 
+    timezone: str = "Asia/Kolkata"  # timetables and the campus day are in local time
+    hold_hours: int = 48  # an unapproved request is released after this
+    reminder_hours: int = 24  # remind the in-charge when this much of the hold is left
+
+    session_secret: str = "dev-only-change-me"
+    google_client_id: str | None = None  # OAuth web client id, for Google Sign-In
+    dev_login: bool = False  # allow signing in by email alone; local testing only
+
 
 @lru_cache
 def get_settings() -> Settings:

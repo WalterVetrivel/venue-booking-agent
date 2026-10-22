@@ -1,0 +1,93 @@
+{
+  "_note": "Fictional mails for testing the 'Use my Gmail' feature. 'to' is filled from ADMIN_EMAIL at load time. expected_booking is ground truth for evaluation and is not inserted into Gmail.",
+  "threads": [
+    {
+      "id": "T01",
+      "expected_booking": {"category": "guest_lecture", "format": "talk", "headcount": 90, "date": "2026-11-23", "start": "10:00", "end": "12:30", "significance": 2, "guest_profile": "external_academic", "equipment": ["projector", "PA system"], "good_venues": ["A Block SH", "MBA SH"], "soft_conflict": null},
+      "messages": [
+        {"from": "Dr. R. Sundaravel <sundaravel.r@example.com>", "date": "2026-10-14T09:12:00+05:30", "subject": "Confirmation: Guest lecture on Generative AI for III year CSE",
+         "body": "Dear Mr. Walter,\n\nThank you for the invitation. I am happy to confirm the guest lecture on \"Generative AI: From Models to Products\" on Monday, 23 November 2026, from 10.00 AM to 12.30 PM.\n\nI understand the audience will be III year CSE students (all four sections, roughly 90 who have opted in). I will need a projector, a lapel mic and an HDMI connection for my laptop.\n\nRegards,\nDr. R. Sundaravel\nProfessor, Department of Computer Science\nAnna University, Chennai"},
+        {"from": "ADMIN", "date": "2026-10-14T11:40:00+05:30", "subject": "Re: Confirmation: Guest lecture on Generative AI for III year CSE",
+         "body": "Dear Sir,\n\nThank you for confirming. We will arrange the hall and AV and share the venue details shortly.\n\nRegards,\nWalter"}
+      ]
+    },
+    {
+      "id": "T02",
+      "expected_booking": {"category": "workshop", "format": "hands-on", "headcount": 55, "date": "2026-11-28", "start": "09:30", "end": "16:00", "significance": 1, "guest_profile": "industry", "equipment": ["Docker Desktop"], "good_venues": ["CC11+CC10", "CC11+CC4"], "soft_conflict": "CC1-CC6 model practical exams in November (only if CC4 is chosen)"},
+      "messages": [
+        {"from": "HoD CSE <hod.cse@example.com>", "date": "2026-10-16T15:05:00+05:30", "subject": "Hands-on Docker & Kubernetes workshop - please arrange",
+         "body": "Walter,\n\nStackbridge Technologies has agreed to run a one-day hands-on workshop on Docker and Kubernetes for our II & III year students on Saturday 28 November, 9.30 AM to 4 PM. We have 55 registrations. Every student needs a system with Docker Desktop installed, so please book suitable labs (two labs is fine) and inform the trainers.\n\nHoD/CSE"}
+      ]
+    },
+    {
+      "id": "T03",
+      "expected_booking": {"category": "placement_training", "format": "hands-on", "headcount": 60, "date": "2026-12-05", "start": "09:00", "end": "16:00", "significance": 1, "guest_profile": "industry", "equipment": ["BYOD"], "good_venues": ["COE1+COE2+COE3"], "soft_conflict": null},
+      "messages": [
+        {"from": "Placement Officer <placement@example.com>", "date": "2026-10-18T10:20:00+05:30", "subject": "Mock interview day for final years - 5 Dec",
+         "body": "Dear Coordinator,\n\nWe are planning a mock technical interview day for about 60 final year CSE+ students on Saturday, 05.12.2026 from 9 AM to 4 PM with panels from Quantix Systems. Students will bring their own laptops for the coding round. Please block the CoE labs for the day.\n\nThanks,\nPlacement & Training Cell"}
+      ]
+    },
+    {
+      "id": "T04",
+      "expected_booking": {"category": "fdp", "format": "mixed", "headcount": 150, "date": "2026-12-14", "end_date": "2026-12-18", "start": "09:30", "end": "16:30", "significance": 2, "guest_profile": "external_academic", "equipment": ["projector", "PA system"], "good_venues": ["D Block SH", "MBA SH"], "soft_conflict": "D Block SH is used for the AICTE FDP in the second week of December every year"},
+      "messages": [
+        {"from": "R&D Cell <rnd@example.com>", "date": "2026-10-19T12:00:00+05:30", "subject": "AICTE ATAL FDP sanctioned - 14 to 18 Dec 2026",
+         "body": "Dear All,\n\nGlad to share that our proposal for a five-day FDP on \"Cloud-Native Application Development\" has been sanctioned. Dates: 14.12.2026 to 18.12.2026, 9.30 AM to 4.30 PM daily. Expected participants: about 150 faculty from various colleges. Sessions are a mix of talks and demos, so a large hall with projector and PA is required.\n\nWalter, as the coordinator please take care of the venue booking.\n\nR&D Cell"}
+      ]
+    },
+    {
+      "id": "T05",
+      "expected_booking": {"category": "guest_lecture", "format": "talk", "headcount": 45, "date": "2027-01-21", "start": "11:00", "end": "12:30", "significance": 3, "guest_profile": "government", "equipment": ["projector", "PA system", "stage"], "good_venues": ["D Block SH", "E Block SH"], "soft_conflict": null},
+      "messages": [
+        {"from": "Principal's Office <principal.office@example.com>", "date": "2026-10-20T09:30:00+05:30", "subject": "Visit of a senior space scientist - 21 January 2027",
+         "body": "Dear Mr. Walter,\n\nA senior scientist from a national space research centre will visit the campus on 21 January 2027. The Principal would like a 90-minute interaction (11.00 AM to 12.30 PM) with about 45 selected students and faculty. Since the Executive Chairman will preside, please arrange one of the main seminar halls with stage and PA.\n\nPrincipal's Office"}
+      ]
+    },
+    {
+      "id": "T06",
+      "expected_booking": {"category": "inauguration", "format": "talk", "headcount": 80, "date": "2027-03-10", "start": "10:00", "end": "12:00", "significance": 2, "guest_profile": "industry", "equipment": ["projector", "PA system"], "good_venues": ["MBA SH", "CSE PG SH (if 70 suffices)"], "soft_conflict": "A Block SH is used for admission counselling in March every year"},
+      "messages": [
+        {"from": "AWS Academy Club <awsclub@example.com>", "date": "2026-10-21T17:45:00+05:30", "subject": "Inauguration of the Cloud Club chapter - March 2027",
+         "body": "Hi Sir,\n\nFor the Cloud Club inauguration we have pencilled in Wednesday 10 March 2027, 10 AM to 12 noon. About 80 students plus a chief guest from Nimbus Cloudworks. We were thinking of A Block Seminar Hall since it fits 100. Could you please check and book?\n\nThanks,\nClub Secretary"}
+      ]
+    },
+    {
+      "id": "T07",
+      "expected_booking": {"category": "hackathon", "format": "hands-on", "headcount": 56, "date": "2027-02-12", "end_date": "2027-02-13", "start": "09:00", "end": "17:00", "significance": 2, "guest_profile": "industry", "equipment": ["BYOD", "Wi-Fi"], "good_venues": ["COE1+COE2+COE3"], "soft_conflict": "COE labs host placement training on Saturdays from January to March (13 Feb is a Saturday)"},
+      "messages": [
+        {"from": "Students' Tech Forum <techforum@example.com>", "date": "2026-10-21T19:10:00+05:30", "subject": "Request for venue - 2-day hackathon (12-13 Feb 2027)",
+         "body": "Respected Sir,\n\nWe would like to conduct HackKIOT 2.0, a two-day hackathon on 12 and 13 February 2027 (9 AM to 5 PM both days). 14 teams of 4, so 56 participants, all with their own laptops. We need good Wi-Fi and power points at every seat.\n\nKindly guide us on the venue.\n\nRegards,\nTech Forum Team"}
+      ]
+    },
+    {
+      "id": "T08",
+      "expected_booking": {"category": "value_added_course", "format": "hands-on", "headcount": 30, "date": "2027-01-04", "end_date": "2027-01-12", "start": "15:10", "end": "16:40", "significance": 1, "guest_profile": "internal", "equipment": ["MySQL Workbench"], "good_venues": ["CC6", "CC9", "CC1", "CC2"], "soft_conflict": null},
+      "messages": [
+        {"from": "Mrs. K. Deepa <deepa.k@example.com>", "date": "2026-10-12T14:00:00+05:30", "subject": "VAC on Advanced SQL - lab needed",
+         "body": "Hi Walter,\n\nI am offering a 7-day value-added course on Advanced SQL and Query Optimisation for 30 II year students from 4 January 2027, daily 3.10 PM to 4.40 PM. Students will use MySQL Workbench. Can you find a lab that is free in that slot?\n\nThanks,\nDeepa"},
+        {"from": "ADMIN", "date": "2026-10-12T16:30:00+05:30", "subject": "Re: VAC on Advanced SQL - lab needed",
+         "body": "Sure, I will check the lab timetables and book one. Will confirm.\n\nWalter"}
+      ]
+    },
+    {
+      "id": "T09",
+      "expected_booking": {"category": "workshop", "format": "hands-on", "headcount": 28, "date": "2026-12-19", "start": "09:30", "end": "13:00", "significance": 1, "guest_profile": "industry", "equipment": ["Cisco Packet Tracer"], "good_venues": ["CC3", "CC4"], "soft_conflict": null},
+      "messages": [
+        {"from": "Mr. B. Arun <arun.b@example.com>", "date": "2026-10-17T11:25:00+05:30", "subject": "Networking workshop on 19th Dec",
+         "body": "Walter,\n\nKovai Robotics' network team will run a half-day workshop on enterprise network design for 28 students on 19th December, 9:30 to 1 PM. Hands-on with Cisco Packet Tracer. Please block a lab that has it.\n\nArun"}
+      ]
+    },
+    {
+      "id": "N01", "expected_booking": null,
+      "messages": [{"from": "Accounts Office <accounts@example.com>", "date": "2026-10-15T10:00:00+05:30", "subject": "Reminder: submission of travel claims", "body": "All faculty are requested to submit pending travel claims for September before 30 October 2026.\n\nAccounts Office"}]
+    },
+    {
+      "id": "N02", "expected_booking": null,
+      "messages": [{"from": "Library <library@example.com>", "date": "2026-10-19T08:30:00+05:30", "subject": "New arrivals in the central library", "body": "Dear Faculty,\n\n45 new titles on cloud computing, AI and management have been added. The list is attached on the library portal.\n\nLibrarian"}]
+    },
+    {
+      "id": "N03", "expected_booking": null,
+      "messages": [{"from": "Mr. S. Karthik <karthik.s@example.com>", "date": "2026-10-20T07:50:00+05:30", "subject": "Leave on 23 Oct", "body": "Hi Walter,\n\nI will be on leave on 23 October. Could you take my 2nd period OOSE class for III D?\n\nThanks,\nKarthik"}]
+    }
+  ]
+}

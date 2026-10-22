@@ -1,0 +1,11 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: venue
+      POSTGRES_PASSWORD: venue_dev_pw
+      POSTGRES_DB: venue_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data

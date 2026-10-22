@@ -1,0 +1,9 @@
+.env
+secrets/
+*.token.json
+__pycache__/
+.venv/
+node_modules/
+pgdata/
+data/*.zip
+*(2).*

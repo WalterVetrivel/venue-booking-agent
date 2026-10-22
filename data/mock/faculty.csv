@@ -1,0 +1,34 @@
+email,name,department,role
+ADMIN_EMAIL (from .env),Walter (admin),CSE,admin
+senthilnathan.r@example.com,Mr. R. Senthilnathan,Facilities,in_charge
+kavitha.p@example.com,Mrs. P. Kavitha,Facilities,in_charge
+ilango.m@example.com,Mr. M. Ilango,Facilities,in_charge
+anitha.s@example.com,Dr. S. Anitha,Facilities,in_charge
+muthukumar.v@example.com,Mr. V. Muthukumar,Facilities,in_charge
+dhanasekar.k@example.com,Mr. K. Dhanasekar,Facilities,in_charge
+revathi.n@example.com,Dr. N. Revathi,Facilities,in_charge
+prabhu.a@example.com,Mr. A. Prabhu,Facilities,in_charge
+divya.g.cse@example.com,Mrs. G. Divya,CSE,faculty
+saravanan.m.cse@example.com,Mr. M. Saravanan,CSE,faculty
+bala.t.cse@example.com,Mr. T. Bala,CSE,faculty
+divya.v.it@example.com,Mrs. V. Divya,IT,faculty
+meena.v.it@example.com,Mrs. V. Meena,IT,faculty
+yamuna.n.it@example.com,Mrs. N. Yamuna,IT,faculty
+sangeetha.j.aids@example.com,Mrs. J. Sangeetha,AI&DS,faculty
+pavithra.n.aids@example.com,Mrs. N. Pavithra,AI&DS,faculty
+sangeetha.t.aids@example.com,Mrs. T. Sangeetha,AI&DS,faculty
+keerthana.s.csbs@example.com,Mrs. S. Keerthana,CSBS,faculty
+mohan.k.csbs@example.com,Mr. K. Mohan,CSBS,faculty
+mohan.s.csbs@example.com,Mr. S. Mohan,CSBS,faculty
+vijay.k.ece@example.com,Mr. K. Vijay,ECE,faculty
+meena.a.ece@example.com,Mrs. A. Meena,ECE,faculty
+yamuna.b.ece@example.com,Mrs. B. Yamuna,ECE,faculty
+divya.e.eee@example.com,Mrs. E. Divya,EEE,faculty
+ramesh.b.eee@example.com,Mr. B. Ramesh,EEE,faculty
+prakash.a.eee@example.com,Mr. A. Prakash,EEE,faculty
+ramesh.v.mech@example.com,Mr. V. Ramesh,MECH,faculty
+harini.k.mech@example.com,Mrs. K. Harini,MECH,faculty
+harini.g.mech@example.com,Mrs. G. Harini,MECH,faculty
+vignesh.j.mba@example.com,Mr. J. Vignesh,MBA,faculty
+rajesh.g.mba@example.com,Mr. G. Rajesh,MBA,faculty
+uma.g.mba@example.com,Mrs. G. Uma,MBA,faculty

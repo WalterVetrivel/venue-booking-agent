@@ -10,7 +10,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend import booking as bk
-from backend import timetable
+from backend import patterns, timetable
 from backend.auth import _out as faculty_out
 from backend.auth import current_user, require_admin
 from backend.auth import router as auth_router
@@ -32,8 +32,10 @@ from backend.models import (
     BookingHistory,
     Faculty,
     Notification,
+    PastEvent,
     RecurringSlot,
     SourceDocument,
+    UsagePattern,
     Venue,
 )
 
@@ -46,10 +48,27 @@ def run_jobs() -> None:
         bk.remind_in_charges(db)
 
 
+def run_nightly() -> None:
+    """Pull new documents from Drive when it is linked, then recompute seasonal patterns."""
+    from backend import drive, extract, knowledge
+    from backend.embeddings import get_embedder
+
+    s = get_settings()
+    if s.drive_root_folder_id and drive.token_file().exists():
+        try:
+            extractor = extract.groq_extractor() if s.groq_api_key and s.groq_extract_model else None
+            knowledge.ingest_drive(get_embedder(), extractor)
+        except Exception as e:  # keep the pattern refresh running even when Drive or Groq is down
+            print(f"Nightly Drive sync failed: {e}")
+    with SessionLocal.begin() as db:
+        patterns.compute(db)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler()
     scheduler.add_job(run_jobs, "interval", minutes=10, next_run_time=datetime.now())
+    scheduler.add_job(run_nightly, "cron", hour=2)
     scheduler.start()
     yield
     scheduler.shutdown(wait=False)
@@ -130,6 +149,14 @@ class SlotEdit(BaseModel):
     valid_to: date | None = None
     course: str | None = None
     batch: str | None = None
+    status: str | None = Field(None, pattern="|".join(REVIEW_STATUSES))
+
+
+class PastEventEdit(BaseModel):
+    venue_id: int | None = None
+    category: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
     status: str | None = Field(None, pattern="|".join(REVIEW_STATUSES))
 
 
@@ -360,6 +387,102 @@ def edit_slot(slot_id: int, body: SlotEdit, db: Session = Depends(get_db), admin
     db.refresh(s)
     flagged = timetable.flag_class_clashes(db) if s.status == "active" else 0
     return {**slot_out(s), "flagged_bookings": flagged}
+
+
+# --- admin: knowledge (Drive, past events, seasonal patterns) ---------------------------------------
+
+
+@app.get("/admin/drive")
+def drive_status(admin: Faculty = Depends(require_admin)):
+    from backend import drive
+
+    s = get_settings()
+    return {"folder_configured": bool(s.drive_root_folder_id), "linked": drive.token_file().exists()}
+
+
+@app.get("/admin/drive/link")
+def drive_link(request: Request, admin: Faculty = Depends(require_admin)):
+    """Send the admin to Google to allow read-only access to Drive. Google returns to /auth/google/callback."""
+    from backend import drive
+
+    try:
+        flow = drive.auth_flow()
+    except FileNotFoundError as e:
+        raise HTTPException(503, str(e)) from e
+    url, state = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
+    request.session["oauth"] = {"purpose": "drive", "state": state, "verifier": flow.code_verifier}
+    return RedirectResponse(url)
+
+
+@app.get("/auth/google/callback")
+def google_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None,
+                    admin: Faculty = Depends(require_admin)):
+    from backend import drive
+
+    pending = request.session.pop("oauth", None)
+    if error or not code or not pending or pending.get("state") != state:
+        return RedirectResponse("/#knowledge")
+    flow = drive.auth_flow(state=state)
+    flow.code_verifier = pending.get("verifier")
+    flow.fetch_token(code=code)
+    drive.save_token(flow.credentials)
+    return RedirectResponse("/#knowledge")
+
+
+@app.get("/admin/patterns")
+def list_patterns(db: Session = Depends(get_db), admin: Faculty = Depends(require_admin)):
+    rows = db.scalars(select(UsagePattern).order_by(UsagePattern.category, UsagePattern.venue_id))
+    return [{"id": p.id, "venue": p.venue.code, "category": p.category, "week_start": p.week_start,
+             "week_end": p.week_end, "weekdays": p.weekdays, "years_seen": p.years_seen,
+             "years_observed": p.years_observed, "confidence": p.confidence, "evidence": p.evidence} for p in rows]
+
+
+@app.post("/admin/patterns/refresh")
+def refresh_patterns(db: Session = Depends(get_db), admin: Faculty = Depends(require_admin)):
+    return {"patterns": len(patterns.compute(db))}
+
+
+def past_event_out(e: PastEvent) -> dict:
+    return {"id": e.id, "title": e.title, "category": e.category, "venue_id": e.venue_id,
+            "venue": e.venue.code if e.venue else None, "start_date": e.start_date.isoformat(),
+            "end_date": e.end_date.isoformat(), "expected_headcount": e.expected_headcount,
+            "actual_headcount": e.actual_headcount, "source": e.source_ref, "source_type": e.source_type,
+            "confidence": e.confidence, "status": e.status}
+
+
+@app.get("/admin/past-events")
+def list_past_events(status: str = "pending_review", limit: int = Query(200, le=1000),
+                     db: Session = Depends(get_db), admin: Faculty = Depends(require_admin)):
+    rows = db.scalars(select(PastEvent).where(PastEvent.status == status)
+                      .order_by(PastEvent.start_date.desc()).limit(limit))
+    return [past_event_out(e) for e in rows]
+
+
+@app.patch("/admin/past-events/{event_id}")
+def edit_past_event(event_id: int, body: PastEventEdit, db: Session = Depends(get_db),
+                    admin: Faculty = Depends(require_admin)):
+    e = db.get(PastEvent, event_id)
+    if e is None:
+        raise HTTPException(404, "No such event.")
+    changes = body.model_dump(exclude_unset=True)
+    if changes.get("status") == "active" and not (changes.get("venue_id") or e.venue_id):
+        raise HTTPException(422, "Pick the venue before approving.")
+    for k, v in changes.items():
+        setattr(e, k, v)
+    db.flush()
+    db.refresh(e)
+    return past_event_out(e)
+
+
+@app.get("/search")
+def search_documents(q: str, k: int = Query(8, le=20), db: Session = Depends(get_db),
+                     user: Faculty = Depends(current_user)):
+    """Hybrid search over circulars and reports."""
+    from backend import documents
+    from backend.embeddings import get_embedder
+
+    return [{"document": h.document, "kind": h.kind, "date": h.doc_date.isoformat() if h.doc_date else None,
+             "text": h.text, "score": round(h.score, 4)} for h in documents.search(db, q, get_embedder(), k)]
 
 
 # The web UI. Mounted last so the API routes above take precedence.

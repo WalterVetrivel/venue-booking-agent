@@ -30,6 +30,25 @@ Open http://localhost:8000 for the web app; the API docs are at http://localhost
 and sign in with `POST /auth/dev-login` using an email on the faculty list. Pending requests expire after 48 hours
 (the in-charge is reminded at 24); a background job checks every 10 minutes.
 
+## Circulars, reports and seasonal patterns
+
+```
+cd backend
+uv run python -m backend.knowledge ingest ../data/mock/drive   # index for search and extract past events (Groq)
+uv run python -m backend.knowledge ingest --no-extract ../data/mock/drive   # search index only, no Groq calls
+uv run python -m backend.knowledge evaluate                    # extraction accuracy against the mock answer key
+uv run python -m backend.knowledge search "admission counselling venue"
+uv run python -m backend.knowledge patterns                    # recompute seasonal patterns
+```
+
+Running extraction replaces the past events the seed loaded from the answer key. Each file is committed
+separately and unchanged files are skipped, so a run stopped by Groq's rate limits can simply be started again.
+The embedding model (about 130 MB) downloads on first use.
+
+To read from Google Drive instead, set `DRIVE_ROOT_FOLDER_ID`, sign in as the admin, open Knowledge and click
+"Link Google Drive". The folder needs `circulars`, `reports` and `timetables` subfolders. It is then read every
+night at 2 am, or on demand with `uv run python -m backend.knowledge drive`.
+
 ## Tests
 
 The tests migrate a separate `venue_test` database from scratch and roll back after each test.

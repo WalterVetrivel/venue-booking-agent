@@ -32,6 +32,7 @@ from backend.models import (
 
 MINOR_FIELDS = ("title", "description", "expected_headcount", "audience", "requirements", "guest_profile")
 NOTIFY_CHANNELS = ("email", "in_app")  # calendar invites arrive in Phase 4
+SEASON_MARGIN_WEEKS = 1  # warn a week either side of a seasonal pattern; past dates drift a little
 
 
 class BookingError(Exception):
@@ -119,7 +120,8 @@ def find_soft_conflicts(db: Session, venue_id: int, start: datetime, end: dateti
     week = day.isocalendar().week
     conflicts = []
     for p in db.scalars(select(UsagePattern).where(UsagePattern.venue_id == venue_id)):
-        if _week_in(week, p.week_start, p.week_end) and (not p.weekdays or day.weekday() in p.weekdays):
+        start, end = p.week_start - SEASON_MARGIN_WEEKS, p.week_end + SEASON_MARGIN_WEEKS
+        if _week_in(week, (start - 1) % 52 + 1, (end - 1) % 52 + 1) and (not p.weekdays or day.weekday() in p.weekdays):
             conflicts.append(SoftConflict(
                 p.category, "pattern", p.confidence,
                 f"Usually used for {p.category} around this time ({p.years_seen} of the last {p.years_observed} years).",

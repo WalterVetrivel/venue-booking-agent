@@ -86,7 +86,7 @@ function showView(name) {
 }
 
 const VIEWS = { calendar: showCalendar, book: () => {}, mine: loadMine, approvals: loadApprovals,
-                timetables: loadTimetables, faculty: loadFaculty, notices: loadNotices };
+                timetables: loadTimetables, knowledge: loadKnowledge, faculty: loadFaculty, notices: loadNotices };
 
 function route() {
   if (!state.me) return;
@@ -336,6 +336,52 @@ $("#tt-upload").onsubmit = async e => {
       (r.flagged_bookings ? `, ${r.flagged_bookings} booking(s) flagged` : "") + (r.problems.length ? `. ${r.problems.join(" ")}` : ".");
     e.target.reset(); loadTimetables();
   } catch (err) { $("#tt-result").textContent = err.message; }
+};
+
+// --- admin: knowledge -----------------------------------------------------------------------------
+
+function weekLabel(w, plusDays = 0) {
+  // The Monday (plus some days) of ISO week w in the current year, as "9 Mar".
+  const jan4 = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 4));
+  const monday = new Date(jan4.getTime() - ((jan4.getUTCDay() + 6) % 7) * 864e5 + ((w - 1) * 7 + plusDays) * 864e5);
+  return monday.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
+async function loadKnowledge() {
+  const drive = await api("/admin/drive");
+  $("#drive-status").textContent = !drive.folder_configured ? "Set DRIVE_ROOT_FOLDER_ID in .env first."
+    : drive.linked ? "Linked. New and changed files are read every night at 2 am." : "Not linked yet.";
+  $("#drive-link").hidden = !drive.folder_configured;
+  $("#drive-link button").textContent = drive.linked ? "Link again" : "Link Google Drive";
+
+  const pats = await api("/admin/patterns");
+  $("#patterns-list").innerHTML = pats.length ? `<div class="table-wrap"><table><tr><th>Venue</th><th>Used for</th><th>Around</th><th>Seen</th><th>Evidence</th></tr>${pats.map(p => `
+    <tr><td>${esc(p.venue)}</td><td>${esc(p.category.replace(/_/g, " "))}</td>
+      <td>${weekLabel(p.week_start)} to ${weekLabel(p.week_end, 6)}${p.weekdays ? ` (${p.weekdays.map(d => DAYS[d]).join(", ")} only)` : ""}</td>
+      <td>${p.years_seen} of ${p.years_observed} years</td>
+      <td class="muted">${p.evidence.slice(-3).map(e => esc(`${e.title} (${e.date})`)).join("<br>")}</td></tr>`).join("")}</table></div>`
+    : `<p class="muted">No patterns yet. They appear once past events are loaded.</p>`;
+
+  const past = await api("/admin/past-events?status=pending_review");
+  const venueOpts = sel => `<option value="">Pick venue</option>` + state.venues.map(v => `<option value="${v.id}" ${v.id === sel ? "selected" : ""}>${esc(v.code)}</option>`).join("");
+  $("#past-review").innerHTML = past.length ? `<div class="table-wrap"><table><tr><th>Event</th><th>Dates</th><th>Venue</th><th>Source</th><th></th></tr>${past.map(e => `
+    <tr data-id="${e.id}"><td>${esc(e.title)}<br><span class="muted">${esc(e.category || "")}</span></td>
+      <td>${e.start_date}${e.end_date !== e.start_date ? ` to ${e.end_date}` : ""}</td>
+      <td><select name="venue_id">${venueOpts(e.venue_id)}</select></td><td class="muted">${esc(e.source || "")}</td>
+      <td><button class="small" data-st="active">Approve</button> <button class="small danger" data-st="rejected">Reject</button></td></tr>`).join("")}</table></div>`
+    : `<p class="muted">Nothing to review.</p>`;
+  for (const btn of $("#past-review").querySelectorAll("[data-st]")) btn.onclick = async () => {
+    const row = btn.closest("tr"), venue = row.querySelector("[name=venue_id]").value;
+    try {
+      await api(`/admin/past-events/${row.dataset.id}`, { method: "PATCH", body: { status: btn.dataset.st, ...(venue ? { venue_id: +venue } : {}) } });
+      toast("Saved."); loadKnowledge();
+    } catch (e) { toast(e.message); }
+  };
+}
+
+$("#patterns-refresh").onclick = async () => {
+  try { const r = await api("/admin/patterns/refresh", { method: "POST" }); toast(`${r.patterns} patterns found.`); loadKnowledge(); }
+  catch (e) { toast(e.message); }
 };
 
 // --- admin: faculty --------------------------------------------------------------------------------

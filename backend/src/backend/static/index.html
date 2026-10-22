@@ -17,6 +17,7 @@
       <a href="#mine">My bookings</a>
       <a href="#approvals" data-role="in_charge admin">Approvals</a>
       <a href="#timetables" data-role="admin">Timetables</a>
+      <a href="#knowledge" data-role="admin">Knowledge</a>
       <a href="#faculty" data-role="admin">Faculty</a>
       <a href="#notices">Notices</a>
     </nav>
@@ -100,6 +101,25 @@
         <h2>Slots to review</h2>
         <p class="muted">Cells the reader couldn't place. They don't block bookings until you approve them.</p>
         <div id="tt-review"></div>
+      </div>
+    </section>
+
+    <section id="view-knowledge" class="view" hidden>
+      <div class="card">
+        <h2>Google Drive</h2>
+        <p id="drive-status" class="muted"></p>
+        <a id="drive-link" href="/admin/drive/link"><button type="button">Link Google Drive</button></a>
+      </div>
+      <div class="card">
+        <h2>Seasonal patterns</h2>
+        <p class="muted">Venues regularly used for the same purpose at the same time of year. Bookings that fall in these weeks get a warning, never a refusal.</p>
+        <div class="actions" style="justify-content:flex-start"><button type="button" class="secondary" id="patterns-refresh">Recompute now</button></div>
+        <div id="patterns-list"></div>
+      </div>
+      <div class="card">
+        <h2>Past events to review</h2>
+        <p class="muted">Events read from circulars and reports where the venue or dates were unclear. They aren't used for recommendations until approved.</p>
+        <div id="past-review"></div>
       </div>
     </section>
 

@@ -16,16 +16,17 @@ cd backend
 uv sync
 uv run alembic upgrade head     # create the schema
 uv run python -m backend.seed --with-past-events   # faculty, venues, lab timetable slots, past events
+uv run python -m backend.timetable ../data/mock/timetables   # optional: read the timetable PDFs instead
 ```
 
-## Run the API
+## Run the app
 
 ```
 cd backend
 uv run uvicorn backend.app:app --reload
 ```
 
-The API docs are at http://localhost:8000/docs. To try it without Google Sign-In, set `DEV_LOGIN=true` in `.env`
+Open http://localhost:8000 for the web app; the API docs are at http://localhost:8000/docs. To try it without Google Sign-In, set `DEV_LOGIN=true` in `.env`
 and sign in with `POST /auth/dev-login` using an email on the faculty list. Pending requests expire after 48 hours
 (the in-charge is reminded at 24); a background job checks every 10 minutes.
 

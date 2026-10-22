@@ -52,13 +52,19 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
 ```
 
-Then:
+A Docker-managed volume is used because Postgres often fails to start with its data in a plain Windows folder.
+
+Then start it and wait for `database system is ready to accept connections` in the logs (Ctrl+C to stop following them):
 
 ```powershell
 docker compose up -d
+docker compose logs -f db
 docker compose exec db psql -U venue -d venue_booking -c "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS btree_gist;"
 ```
 

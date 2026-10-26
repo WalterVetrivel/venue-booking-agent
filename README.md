@@ -49,6 +49,30 @@ To read from Google Drive instead, set `DRIVE_ROOT_FOLDER_ID`, sign in as the ad
 "Link Google Drive". The folder needs `circulars`, `reports` and `timetables` subfolders. It is then read every
 night at 2 am, or on demand with `uv run python -m backend.knowledge drive`.
 
+## The assistant (chat) and MCP servers
+
+The Assistant page is the chat. It needs `GROQ_API_KEY` and `GROQ_AGENT_MODEL` in `.env`. It asks for whatever is
+missing (headcount, dates, times, talk or hands-on), suggests free venues with reasons and seasonal warnings, and
+only requests, changes or cancels a booking after you say yes to the exact action. Run `alembic upgrade head` once
+for the conversation table.
+
+Its tools are three MCP servers, also served over streamable HTTP so you can try them from the MCP Inspector or
+Claude Desktop: `/mcp/booking/mcp`, `/mcp/knowledge/mcp` and `/mcp/recommender/mcp`. Get a bearer token (valid for
+an hour, acting as you) from http://localhost:8000/mcp/token while signed in. Over stdio:
+
+```
+cd backend
+ACTING_EMAIL=you@example.com uv run python -m backend.mcp_servers booking   # or knowledge, recommender
+```
+
+To check the recommendations and the model's reading of requests against the 32 requests in `data/eval`:
+
+```
+cd backend
+uv run python -m backend.agent_eval          # valid shortlists and planted seasonal warnings, no Groq
+uv run python -m backend.agent_eval --llm    # also how accurately Groq reads each request, field by field
+```
+
 ## Tests
 
 The tests migrate a separate `venue_test` database from scratch and roll back after each test.

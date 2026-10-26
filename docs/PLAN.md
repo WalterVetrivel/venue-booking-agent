@@ -92,8 +92,8 @@ Twelve tables in Postgres carry the system. Availability is a query over `recurr
 | `faculty` | email, name, department, role (faculty / in-charge / admin), gmail_linked | The allowlist: only these accounts can sign in and book |
 | `venue` | id, name, building, type (hall/lab/classroom/seminar room), capacity, equipment[] (projector, PA, AC, n_computers, software), in_charge | Hand-entered once; the most important table to get right |
 | `recurring_slot` | venue_id, weekday, start, end, valid_from, valid_to, course, class, source_ref | From timetable PDFs; one row per weekly class |
-| `booking` | id, venue_id, start_ts, end_ts, status (hold / pending / confirmed / rejected / expired / cancelled), event_id, requested_by, approved_by, soft_conflict_note, replaces_booking_id, calendar_event_id, version | Exclusion constraint on (venue_id, time range) for active rows makes double booking impossible; a change request is a new row pointing at the one it replaces |
-| `booking_party` | booking_id, email, role (organiser / co-organiser / contact / in-charge / admin) | Everyone who is notified about this booking |
+| `booking` | id (one row per day and venue of an event), venue_id, start_ts, end_ts, status (hold / pending / confirmed / rejected / expired / cancelled), event_id, requested_by, approved_by, soft_conflict_note, replaces_booking_id, calendar_event_id, version | Exclusion constraint on (venue_id, time range) for active rows makes double booking impossible; a change request is a new row pointing at the one it replaces |
+| `event_party` | event_id, email, role (organiser / co-organiser / contact / in-charge / admin) | Everyone who is notified about this event's bookings |
 | `booking_history` | booking_id, actor, action (requested / approved / rejected / edited / change-requested / cancelled / expired), before, after, reason, at | Audit trail; drives the "what changed" text in notices |
 | `notification` | id, booking_id, recipient, channel (email / calendar / in-app), payload, status (queued / sent / failed), attempts | Outbox, written in the same transaction as the change |
 | `event` | id, title, category, format (talk / hands-on / mixed), expected_headcount, significance (1-3), guest_profile, requirements[], description | One per booking request |
@@ -125,7 +125,7 @@ RAG answers "what do we know about this?" questions; it never answers "is this f
 
 ## MCP servers and tools
 
-Five small MCP servers, written in Python with the official MCP SDK (FastMCP), expose everything the agent can do. Keep each tool narrow with strict JSON schemas: models pick the right tool far more reliably from 10-15 well-named tools than from 40.
+Five small MCP servers (booking, knowledge and recommender built in Phase 3; drive and gmail in Phase 4), written in Python with the official MCP SDK (FastMCP), expose everything the agent can do. Keep each tool narrow with strict JSON schemas: models pick the right tool far more reliably from 10-15 well-named tools than from 40.
 
 | Server | Tools | Side effects |
 | --- | --- | --- |
@@ -242,7 +242,7 @@ Model names on Groq change often; pick from the current list in the Groq console
 | Frontend | Next.js (or React + Vite) with a chat panel, a calendar view (FullCalendar) and an approvals screen | Streamlit for a quicker first prototype |
 | Auth | Google Sign-In + `faculty` allowlist; roles faculty / in-charge / admin | |
 | Backend API | FastAPI (Python) | |
-| Agent | LangGraph + `langchain-groq`, MCP tools via `langchain-mcp-adapters` | PydanticAI, or a hand-written loop |
+| Agent | LangGraph + `langchain-groq`, MCP tools through an in-process MCP client session | PydanticAI, or a hand-written loop |
 | LLM | Groq API | Ollama offline; Vertex AI Gemini for a pilot |
 | MCP servers | Python MCP SDK (FastMCP), stdio or local HTTP | |
 | Database | Postgres 16 + pgvector in Docker | SQLite + sqlite-vec; Cloud SQL for a pilot |
@@ -274,8 +274,8 @@ Each phase ends with something usable, so the project is demonstrable even if la
 1. **Phase 0, foundations and mock data.** Venue list, Docker Compose with Postgres + pgvector and the exclusion constraint, faculty allowlist, the mock dataset. *Exit: every venue and mock document is loaded.*
 2. **Phase 1, booking core (no AI).** FastAPI + simple UI: Google Sign-In, calendar view, manual booking form, hold/approve/reject, edit, change requests and cancel. Timetable PDFs parsed into slots with a review screen. *Exit: a faculty can book, an in-charge can approve, and clashes with classes are rejected.*
 3. **Phase 2, knowledge and patterns.** Drive folder ingestion of circulars and reports into chunks and `past_event`; nightly `usage_pattern` job. *Exit: the admissions pattern for A Block Seminar Hall is detected from the mock circulars.*
-4. **Phase 3, MCP + agent.** The five MCP servers; the LangGraph agent on Groq with follow-up questions, lookup and recommendations with soft-conflict warnings. *Exit: 80% of test requests give a valid, conflict-free shortlist, and every planted soft conflict is reported.*
-5. **Phase 4, Gmail linking and notifications.** Per-faculty Gmail link, mail search and extraction in the chat, and the notification worker (email, calendar updates, in-app) for every booking change. *Exit: a booking can start from a mail thread and end with an invite.*
+4. **Phase 3, MCP + agent.** The booking, knowledge and recommender MCP servers; the LangGraph agent on Groq with follow-up questions, lookup and recommendations with soft-conflict warnings. *Exit: 80% of test requests give a valid, conflict-free shortlist, and every planted soft conflict is reported.*
+5. **Phase 4, Gmail linking and notifications.** The drive and gmail MCP servers; per-faculty Gmail link, mail search and extraction in the chat, and the notification worker (email, calendar updates, in-app) for every booking change. *Exit: a booking can start from a mail thread and end with an invite.*
 6. **Phase 5, optional pilot.** Cloud Run + Cloud SQL on the GCP credits, real data from one department, then a learned ranker and usage analytics.
 
 ## Evaluation, risks and open questions

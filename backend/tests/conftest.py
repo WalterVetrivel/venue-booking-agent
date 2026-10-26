@@ -1,4 +1,7 @@
+import hashlib
+import math
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -36,3 +39,25 @@ def db(engine):
         yield session
         session.close()
         trans.rollback()
+
+
+class FakeEmbedder:
+    """Bag-of-words hashed into a vector: no model download, and similar texts still land close together."""
+
+    def _vec(self, text: str) -> list[float]:
+        v = [0.0] * 384
+        for w in re.findall(r"[a-z0-9]+", text.lower()):
+            v[int(hashlib.md5(w.encode()).hexdigest(), 16) % 384] += 1
+        n = math.sqrt(sum(x * x for x in v)) or 1
+        return [x / n for x in v]
+
+    def passages(self, texts):
+        return [self._vec(t) for t in texts]
+
+    def query(self, text):
+        return self._vec(text)
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"

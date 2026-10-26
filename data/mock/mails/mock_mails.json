@@ -63,7 +63,7 @@
       "id": "T08",
       "expected_booking": {"category": "value_added_course", "format": "hands-on", "headcount": 30, "date": "2027-01-04", "end_date": "2027-01-12", "start": "15:10", "end": "16:40", "significance": 1, "guest_profile": "internal", "equipment": ["MySQL Workbench"], "good_venues": ["CC6", "CC9", "CC1", "CC2"], "soft_conflict": null},
       "messages": [
-        {"from": "Mrs. K. Deepa <deepa.k@example.com>", "date": "2026-10-12T14:00:00+05:30", "subject": "VAC on Advanced SQL - lab needed",
+        {"from": "Mrs. S. Deepa <deepa.s@example.com>", "date": "2026-10-12T14:00:00+05:30", "subject": "VAC on Advanced SQL - lab needed",
          "body": "Hi Walter,\n\nI am offering a 7-day value-added course on Advanced SQL and Query Optimisation for 30 II year students from 4 January 2027, daily 3.10 PM to 4.40 PM. Students will use MySQL Workbench. Can you find a lab that is free in that slot?\n\nThanks,\nDeepa"},
         {"from": "ADMIN", "date": "2026-10-12T16:30:00+05:30", "subject": "Re: VAC on Advanced SQL - lab needed",
          "body": "Sure, I will check the lab timetables and book one. Will confirm.\n\nWalter"}
@@ -73,8 +73,8 @@
       "id": "T09",
       "expected_booking": {"category": "workshop", "format": "hands-on", "headcount": 28, "date": "2026-12-19", "start": "09:30", "end": "13:00", "significance": 1, "guest_profile": "industry", "equipment": ["Cisco Packet Tracer"], "good_venues": ["CC3", "CC4"], "soft_conflict": null},
       "messages": [
-        {"from": "Mr. B. Arun <arun.b@example.com>", "date": "2026-10-17T11:25:00+05:30", "subject": "Networking workshop on 19th Dec",
-         "body": "Walter,\n\nKovai Robotics' network team will run a half-day workshop on enterprise network design for 28 students on 19th December, 9:30 to 1 PM. Hands-on with Cisco Packet Tracer. Please block a lab that has it.\n\nArun"}
+        {"from": "Mr. G. Babu <babu.g@example.com>", "date": "2026-10-17T11:25:00+05:30", "subject": "Networking workshop on 19th Dec",
+         "body": "Walter,\n\nKovai Robotics' network team will run a half-day workshop on enterprise network design for 28 students on 19th December, 9:30 to 1 PM. Hands-on with Cisco Packet Tracer. Please block a lab that has it.\n\nBabu"}
       ]
     },
     {
@@ -87,7 +87,7 @@
     },
     {
       "id": "N03", "expected_booking": null,
-      "messages": [{"from": "Mr. S. Karthik <karthik.s@example.com>", "date": "2026-10-20T07:50:00+05:30", "subject": "Leave on 23 Oct", "body": "Hi Walter,\n\nI will be on leave on 23 October. Could you take my 2nd period OOSE class for III D?\n\nThanks,\nKarthik"}]
+      "messages": [{"from": "Mr. K. Praveen <praveen.k@example.com>", "date": "2026-10-20T07:50:00+05:30", "subject": "Leave on 23 Oct", "body": "Hi Walter,\n\nI will be on leave on 23 October. Could you take my 2nd period OOSE class for III D?\n\nThanks,\nPraveen"}]
     }
   ]
 }

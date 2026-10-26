@@ -13,7 +13,7 @@ def _count(db, model):
 def test_seed_loads_mock_data(db):
     counts = seed.run(db, with_past_events=True, admin_email=ADMIN)
     assert counts["venues"] == _count(db, Venue) == 19
-    assert counts["faculty"] == _count(db, Faculty) == 33
+    assert counts["faculty"] == _count(db, Faculty) == 45  # the admin and the 44 other CSE faculty
     assert counts["recurring_slots"] == _count(db, RecurringSlot) == 124
     assert counts["past_events"] == _count(db, PastEvent) > 0
     admin = db.scalar(select(Faculty).where(Faculty.email == ADMIN))

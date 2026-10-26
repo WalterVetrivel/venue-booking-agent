@@ -78,6 +78,98 @@ $("#dev-login").onsubmit = async e => {
   catch (err) { $("#login-error").textContent = err.message; }
 };
 
+// --- chat ------------------------------------------------------------------------------------------
+
+const CHAT_KEY = "chatSession";
+const GREETING = "Hi! Tell me what you're planning: what it is, roughly how many people, when, and whether it's a "
+  + "talk or hands-on. I'll check what's free and suggest venues. You can also ask about venues, rules or past events.";
+
+function chatId() { try { return +localStorage.getItem(CHAT_KEY) || null; } catch { return null; } }
+function setChatId(id) { try { id ? localStorage.setItem(CHAT_KEY, id) : localStorage.removeItem(CHAT_KEY); } catch {} }
+
+async function loadChat() {
+  const log = $("#chat-log");
+  if (log.dataset.loaded === String(chatId())) return;
+  log.innerHTML = "";
+  log.dataset.loaded = String(chatId());
+  let convo = null;
+  if (chatId()) { try { convo = await api(`/chat/sessions/${chatId()}`); } catch { setChatId(null); } }
+  addBubble("assistant", GREETING);
+  const msgs = convo?.messages || [];
+  msgs.forEach((m, i) => addBubble(m.role, m.content, m.data, convo.pending && i === msgs.length - 1));
+  $("#chat-form").elements.message.focus();
+}
+
+function addBubble(role, text, data, live = false) {
+  const div = document.createElement("div");
+  div.className = `bubble ${role}`;
+  div.innerHTML = `<div class="text">${esc(text).replace(/\n/g, "<br>")}</div>`;
+  for (const o of data?.options || []) {
+    const card = document.createElement("div");
+    card.className = "option";
+    card.innerHTML = `<div><b>${esc(o.name)}</b> <span class="muted">${esc(o.code)} · ${o.capacity} seats</span></div>
+      <ul>${o.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+      ${o.soft_conflicts.map(c => `<div class="warn">${esc(c.note)}</div>`).join("")}
+      <button type="button" class="small">Request this</button>`;
+    card.querySelector("button").onclick = () => sendChat(`Request ${o.code}`, { pick: o.code });
+    div.append(card);
+  }
+  if (data?.nearest_free_dates?.length) {
+    div.insertAdjacentHTML("beforeend", `<div class="muted">Nearest free days: ${data.nearest_free_dates.map(d =>
+      `${esc(fmtDay(d.date))} (${d.venues.map(esc).join(", ")})`).join("; ")}</div>`);
+  }
+  if (data?.bookings?.length) div.insertAdjacentHTML("beforeend", `<div class="table-wrap"><table>${data.bookings.map(b => `
+    <tr><td>${esc(b.title)}</td><td>${esc(b.venue)}</td><td>${when(b)}</td><td>${statusTag(b.status)}</td>
+      <td><button class="secondary small" data-open="${b.booking_id}">Open</button></td></tr>`).join("")}</table></div>`);
+  if (data?.confirm && live) {
+    const row = document.createElement("div");
+    row.className = "actions confirm";
+    row.innerHTML = `<button type="button">Yes, go ahead</button><button type="button" class="secondary">No</button>`;
+    const [yes, no] = row.querySelectorAll("button");
+    yes.onclick = () => sendChat("Yes, go ahead", { confirm: true });
+    no.onclick = () => sendChat("No", { confirm: false });
+    div.append(row);
+  }
+  wireOpen(div);
+  $("#chat-log").append(div);
+  div.scrollIntoView({ block: "end", behavior: "smooth" });
+}
+
+async function sendChat(message, action) {
+  if (sendChat.busy) return;
+  sendChat.busy = true;
+  for (const b of document.querySelectorAll("#chat-log .confirm, #chat-log .option button")) b.remove();
+  addBubble("user", message);
+  const typing = document.createElement("div");
+  typing.className = "bubble assistant typing"; typing.textContent = "Checking…";
+  $("#chat-log").append(typing);
+  try {
+    const r = await api("/chat", { method: "POST", body: { message, session_id: chatId(), action } });
+    setChatId(r.session_id);
+    $("#chat-log").dataset.loaded = String(r.session_id);
+    typing.remove();
+    addBubble("assistant", r.reply, r.data, r.pending);
+  } catch (e) {
+    typing.remove();
+    addBubble("assistant", e.message);
+  } finally {
+    sendChat.busy = false;
+  }
+}
+
+$("#chat-form").onsubmit = e => {
+  e.preventDefault();
+  const box = e.target.elements.message;
+  const text = box.value.trim();
+  if (!text) return;
+  box.value = "";
+  sendChat(text);
+};
+$("#chat-form").elements.message.onkeydown = e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chat-form").requestSubmit(); }
+};
+$("#chat-new").onclick = () => { setChatId(null); loadChat(); };
+
 // --- routing ---------------------------------------------------------------------------------------
 
 function showView(name) {
@@ -85,14 +177,14 @@ function showView(name) {
   for (const a of document.querySelectorAll("nav a")) a.classList.toggle("active", a.getAttribute("href") === `#${name}`);
 }
 
-const VIEWS = { calendar: showCalendar, book: () => {}, mine: loadMine, approvals: loadApprovals,
+const VIEWS = { chat: loadChat, calendar: showCalendar, book: () => {}, mine: loadMine, approvals: loadApprovals,
                 timetables: loadTimetables, knowledge: loadKnowledge, faculty: loadFaculty, notices: loadNotices };
 
 function route() {
   if (!state.me) return;
-  const name = location.hash.slice(1) || "calendar";
-  showView(VIEWS[name] ? name : "calendar");
-  (VIEWS[name] || showCalendar)();
+  const name = VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : "chat";
+  showView(name);
+  VIEWS[name]();
 }
 window.addEventListener("hashchange", route);
 

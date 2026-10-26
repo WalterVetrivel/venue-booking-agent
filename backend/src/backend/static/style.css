@@ -58,7 +58,20 @@ dialog::backdrop { background: rgba(0, 0, 0, .35); }
          padding: 10px 16px; border-radius: 8px; max-width: 90vw; }
 .fc { --fc-border-color: var(--border); --fc-page-bg-color: var(--surface); --fc-today-bg-color: var(--warn-bg); font-size: 13px; }
 .fc .fc-button { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.chat { display: flex; flex-direction: column; min-height: 70vh; }
+.chat-head { display: flex; justify-content: space-between; align-items: center; }
+#chat-log { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 64vh; padding: 4px 0 12px; }
+.bubble { max-width: 85%; padding: 10px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+.bubble.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.bubble.typing { color: var(--muted); font-style: italic; }
+.bubble .option { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+.bubble .option ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
+.bubble table { margin-top: 8px; }
+.bubble .actions { justify-content: flex-start; }
+#chat-form { display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--border); padding-top: 12px; }
+#chat-form textarea { flex: 1; resize: vertical; }
 @media (max-width: 640px) {
+  .bubble { max-width: 100%; }
   header { gap: 6px 12px; }
   header h1 { flex: 1; }
   nav { order: 3; width: 100%; flex: none; }

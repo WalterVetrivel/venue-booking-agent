@@ -124,7 +124,7 @@ def find_soft_conflicts(db: Session, venue_id: int, start: datetime, end: dateti
         if _week_in(week, (start - 1) % 52 + 1, (end - 1) % 52 + 1) and (not p.weekdays or day.weekday() in p.weekdays):
             conflicts.append(SoftConflict(
                 p.category, "pattern", p.confidence,
-                f"Usually used for {p.category} around this time ({p.years_seen} of the last {p.years_observed} years).",
+                f"Usually used for {p.category.replace('_', ' ')} around this time ({p.years_seen} of the last {p.years_observed} years).",
                 p.evidence or []))
     for r in db.scalars(select(ExpectedReservation).where(
             ExpectedReservation.venue_id == venue_id, ExpectedReservation.start_date <= day,

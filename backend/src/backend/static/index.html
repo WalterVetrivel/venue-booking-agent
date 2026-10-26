@@ -12,6 +12,7 @@
   <header>
     <h1>KIOT Venue Booking</h1>
     <nav id="nav" hidden>
+      <a href="#chat">Assistant</a>
       <a href="#calendar">Calendar</a>
       <a href="#book">Book</a>
       <a href="#mine">My bookings</a>
@@ -36,6 +37,21 @@
           <button>Sign in</button>
         </form>
         <p id="login-error" class="error"></p>
+      </div>
+    </section>
+
+    <section id="view-chat" class="view" hidden>
+      <div class="card chat">
+        <div class="chat-head">
+          <h2>Assistant</h2>
+          <button type="button" class="secondary small" id="chat-new">New conversation</button>
+        </div>
+        <div id="chat-log" aria-live="polite"></div>
+        <form id="chat-form">
+          <textarea name="message" rows="2" required
+                    placeholder="e.g. A hands-on Python workshop for 50 students next Saturday, 9:30 to 12:30"></textarea>
+          <button>Send</button>
+        </form>
       </div>
     </section>
 

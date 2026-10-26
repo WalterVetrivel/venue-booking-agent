@@ -367,3 +367,14 @@ class DocumentChunk(Base):
     doc_date: Mapped[date | None] = mapped_column(Date)
     category: Mapped[str | None] = mapped_column(Text)
     meta: Mapped[dict] = mapped_column(JSONB, server_default="{}")
+
+
+class ChatSession(Timestamps, Base):
+    """One conversation with the agent: the transcript and the booking draft it is building."""
+
+    __tablename__ = "chat_session"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    faculty_id: Mapped[int] = mapped_column(ForeignKey("faculty.id", ondelete="CASCADE"), index=True)
+    messages: Mapped[list] = mapped_column(JSONB, server_default="[]")  # [{role, content, data?}]
+    state: Mapped[dict] = mapped_column(JSONB, server_default="{}")  # draft request, shown options, pending action

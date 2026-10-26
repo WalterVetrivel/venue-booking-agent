@@ -108,8 +108,18 @@ def seed_past_events(db: Session, mock_dir: Path) -> int:
     return n
 
 
+def embed_past_events(db: Session, embedder) -> int:
+    """Fill in the similarity vector for past events that don't have one yet."""
+    from backend.extract import event_text
+
+    events = list(db.scalars(select(PastEvent).where(PastEvent.embedding.is_(None))))
+    for e, vec in zip(events, embedder.passages([event_text(e) for e in events]) if events else []):
+        e.embedding = vec
+    return len(events)
+
+
 def run(db: Session, with_past_events: bool = False, mock_dir: Path | None = None,
-        admin_email: str | None = None) -> dict[str, int]:
+        admin_email: str | None = None, embedder=None) -> dict[str, int]:
     settings = get_settings()
     mock_dir = mock_dir or settings.data_dir / "mock"
     counts = {
@@ -121,6 +131,9 @@ def run(db: Session, with_past_events: bool = False, mock_dir: Path | None = Non
     counts["recurring_slots"] = seed_recurring_slots(db, mock_dir)
     if with_past_events:
         counts["past_events"] = seed_past_events(db, mock_dir)
+        if embedder is not None:
+            db.flush()
+            embed_past_events(db, embedder)
     return counts
 
 
@@ -130,7 +143,12 @@ def main() -> None:
                         help="also load past events from data/mock/ground_truth/events.csv")
     args = parser.parse_args()
     with SessionLocal.begin() as db:
-        counts = run(db, with_past_events=args.with_past_events)
+        embedder = None
+        if args.with_past_events:
+            from backend.embeddings import get_embedder
+
+            embedder = get_embedder()  # downloads the model on first use
+        counts = run(db, with_past_events=args.with_past_events, embedder=embedder)
     print(", ".join(f"{k}: {v}" for k, v in counts.items()))
 
 

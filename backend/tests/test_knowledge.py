@@ -1,6 +1,4 @@
 import csv
-import hashlib
-import math
 import re
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
@@ -12,27 +10,10 @@ from sqlalchemy.orm import sessionmaker
 from backend import booking as bk
 from backend import documents, extract, knowledge, patterns, seed
 from backend.config import REPO_ROOT
+from conftest import FakeEmbedder
 from backend.models import DocumentChunk, Faculty, PastEvent, SourceDocument, UsagePattern, Venue
 
 MOCK = REPO_ROOT / "data" / "mock"
-DIM = 384
-
-
-class FakeEmbedder:
-    """Bag-of-words hashed into a vector: no model download, and similar texts still land close together."""
-
-    def _vec(self, text: str) -> list[float]:
-        v = [0.0] * DIM
-        for w in re.findall(r"[a-z0-9]+", text.lower()):
-            v[int(hashlib.md5(w.encode()).hexdigest(), 16) % DIM] += 1
-        n = math.sqrt(sum(x * x for x in v)) or 1
-        return [x / n for x in v]
-
-    def passages(self, texts):
-        return [self._vec(t) for t in texts]
-
-    def query(self, text):
-        return self._vec(text)
 
 
 def answer_key_extractor():

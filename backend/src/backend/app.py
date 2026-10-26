@@ -1,9 +1,12 @@
-"""The HTTP API: venues, availability, the booking lifecycle, approvals and the faculty allowlist.
+"""The HTTP API: venues, availability, the booking lifecycle, approvals, the faculty allowlist and the chat.
+
+The MCP servers are mounted under /mcp/<name>/mcp (streamable HTTP); GET /mcp/token gives a bearer token.
 
     uv run uvicorn backend.app:app --reload
 """
 
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
+from functools import cache
 from dataclasses import asdict
 from datetime import date, datetime, time
 from pathlib import Path
@@ -18,7 +21,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend import booking as bk
-from backend import patterns, timetable
+from backend import agent, mcp_servers, patterns, timetable
 from backend.auth import _out as faculty_out
 from backend.auth import current_user, require_admin
 from backend.auth import router as auth_router
@@ -30,6 +33,7 @@ from backend.models import (
     ROLES,
     Booking,
     BookingHistory,
+    ChatSession,
     Faculty,
     Notification,
     PastEvent,
@@ -70,7 +74,10 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(run_jobs, "interval", minutes=10, next_run_time=datetime.now())
     scheduler.add_job(run_nightly, "cron", hour=2)
     scheduler.start()
-    yield
+    async with AsyncExitStack() as stack:
+        for server in mcp_servers.SERVERS.values():
+            await stack.enter_async_context(server.session_manager.run())
+        yield
     scheduler.shutdown(wait=False)
 
 
@@ -483,6 +490,60 @@ def search_documents(q: str, k: int = Query(8, le=20), db: Session = Depends(get
 
     return [{"document": h.document, "kind": h.kind, "date": h.doc_date.isoformat() if h.doc_date else None,
              "text": h.text, "score": round(h.score, 4)} for h in documents.search(db, q, get_embedder(), k)]
+
+
+# --- chat -------------------------------------------------------------------------------------------------
+
+
+class ChatIn(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    session_id: int | None = None
+    action: dict | None = Field(None, description='A button press: {"pick": venue code} or {"confirm": true/false}')
+
+
+@cache
+def chat_llm() -> agent.GroqLLM:
+    return agent.GroqLLM()
+
+
+@app.post("/chat")
+async def chat(body: ChatIn, db: Session = Depends(get_db), user: Faculty = Depends(current_user)):
+    try:
+        llm = chat_llm()
+    except RuntimeError as e:
+        raise HTTPException(503, str(e)) from e
+    return await agent.chat(db, user, llm, body.message, body.session_id, body.action)
+
+
+@app.get("/chat/sessions")
+def chat_sessions(db: Session = Depends(get_db), user: Faculty = Depends(current_user)):
+    rows = db.scalars(select(ChatSession).where(ChatSession.faculty_id == user.id)
+                      .order_by(ChatSession.updated_at.desc()).limit(20))
+    return [{"id": c.id, "updated_at": c.updated_at.isoformat(),
+             "first": next((m["content"][:80] for m in c.messages if m["role"] == "user"), "")} for c in rows]
+
+
+@app.get("/chat/sessions/{session_id}")
+def chat_session(session_id: int, db: Session = Depends(get_db), user: Faculty = Depends(current_user)):
+    c = db.get(ChatSession, session_id)
+    if c is None or c.faculty_id != user.id:
+        raise HTTPException(404, "No such conversation.")
+    return {"id": c.id, "messages": c.messages, "pending": bool(c.state.get("pending"))}
+
+
+# --- MCP -------------------------------------------------------------------------------------------------
+
+
+@app.get("/mcp/token")
+def mcp_token(user: Faculty = Depends(current_user)):
+    """A bearer token for the MCP servers, to use them from the MCP Inspector or Claude Desktop as yourself."""
+    return {"token": mcp_servers.mint_token(user.id), "expires_in": mcp_servers.TOKEN_MAX_AGE,
+            "servers": [f"/mcp/{name}/mcp" for name in mcp_servers.SERVERS]}
+
+
+for _name, _server in mcp_servers.SERVERS.items():
+    _server.settings.streamable_http_path = "/mcp"
+    app.mount(f"/mcp/{_name}", _server.streamable_http_app())
 
 
 # The web UI. Mounted last so the API routes above take precedence.

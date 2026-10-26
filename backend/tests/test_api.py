@@ -141,3 +141,26 @@ def test_admin_uploads_and_reviews_timetables(people, api, monkeypatch, tmp_path
     assert [s["id"] for s in admin.get("/admin/timetable-slots").json()] == [slot["id"]]
     assert admin.patch(f"/admin/timetable-slots/{slot['id']}", json={"end_time": "08:00"}).status_code == 422
     assert admin.post("/admin/timetables", files={"file": ("x.txt", b"hi", "text/plain")}).status_code == 422
+
+
+def test_admin_knowledge_pages(people, api):
+    from datetime import date as d
+
+    from backend import patterns
+    from backend.models import PastEvent
+
+    admin = client(people["admin"])
+    assert client(people["alice"]).get("/admin/patterns").status_code == 403
+    api.add(PastEvent(title="Unclear event", category="workshop", start_date=d(2025, 1, 6), end_date=d(2025, 1, 6),
+                      source_type="circular", status="pending_review"))
+    seed.run(api, admin_email="admin@example.com", with_past_events=True)
+    api.flush()
+    assert admin.post("/admin/patterns/refresh").json()["patterns"] > 0
+    pats = admin.get("/admin/patterns").json()
+    assert any(p["category"] == "admissions" and p["venue"] == "A Block SH" for p in pats)
+
+    (pending,) = admin.get("/admin/past-events").json()
+    assert admin.patch(f"/admin/past-events/{pending['id']}", json={"status": "active"}).status_code == 422
+    r = admin.patch(f"/admin/past-events/{pending['id']}", json={"status": "active", "venue_id": people["cc1"]})
+    assert r.json()["status"] == "active" and r.json()["venue"] == "CC1"
+    assert set(admin.get("/admin/drive").json()) == {"folder_configured", "linked"}

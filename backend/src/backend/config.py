@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     hold_hours: int = 48  # an unapproved request is released after this
     reminder_hours: int = 24  # remind the in-charge when this much of the hold is left
 
+    groq_api_key: str | None = None
+    groq_agent_model: str | None = None  # large model: the chat agent, and extraction retries
+    groq_extract_model: str | None = None  # small fast model: bulk extraction from documents
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+
+    google_oauth_client_file: Path = REPO_ROOT / "secrets" / "google_oauth_client.json"
+    google_oauth_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+    drive_root_folder_id: str | None = None
+    secrets_dir: Path = REPO_ROOT / "secrets"
+
     session_secret: str = "dev-only-change-me"
     google_client_id: str | None = None  # OAuth web client id, for Google Sign-In
     dev_login: bool = False  # allow signing in by email alone; local testing only

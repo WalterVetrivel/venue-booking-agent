@@ -28,3 +28,9 @@ def test_request_set_meets_the_phase_3_bar(db, monkeypatch):
     assert out["valid_rate"] >= 0.8, out["failures"]
     assert out["soft_reported"] == out["soft_planted"] == 9, out["failures"]
     assert set(out["understanding"].values()) == {1.0}
+
+
+def test_mail_cases_score_with_a_perfect_reader(db):
+    cases = agent_eval.mail_cases()
+    assert len(cases) == 9 and all(c["text"].startswith(agent_eval.MAIL_PREFIX) for c in cases)
+    assert set(agent_eval.understanding_score(AnswerKey(cases), db, cases).values()) == {1.0}

@@ -60,6 +60,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .35); }
 .fc .fc-button { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .chat { display: flex; flex-direction: column; min-height: 70vh; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; }
+.chat-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 #chat-log { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 64vh; padding: 4px 0 12px; }
 .bubble { max-width: 85%; padding: 10px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
 .bubble.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-color: var(--accent); }

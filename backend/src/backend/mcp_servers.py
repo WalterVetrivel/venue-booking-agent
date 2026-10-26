@@ -1,7 +1,7 @@
 """The MCP servers: everything the agent can do, as narrow tools with strict schemas.
 
-Three servers, mounted in the API at /mcp/booking/mcp, /mcp/knowledge/mcp and /mcp/recommender/mcp
-(streamable HTTP), so the agent, Claude Desktop or the MCP Inspector all use the same tools.
+Five servers, mounted in the API at /mcp/<name>/mcp (streamable HTTP) for booking, knowledge, recommender,
+gmail and drive, so the agent, Claude Desktop or the MCP Inspector all use the same tools.
 
 Every call acts as one faculty member. Over HTTP that is the bearer token the backend mints for the
 signed-in user (`mint_token`); for the in-process agent it is `acting_faculty_id`, set by the backend
@@ -9,7 +9,8 @@ after it has checked the session; over stdio it is the ACTING_EMAIL environment 
 
     ACTING_EMAIL=you@example.com uv run python -m backend.mcp_servers booking
 
-Booking tools act only on the caller's own bookings and can't approve anything. The agent asks for
+Booking tools act only on the caller's own bookings and can't approve anything. The gmail tools read only the
+caller's own mailbox, and only once they have linked it. The agent asks for
 an explicit yes before it calls `create_hold`, `request_change` or `cancel_booking`.
 """
 
@@ -25,11 +26,12 @@ from mcp.server.fastmcp import Context, FastMCP
 from sqlalchemy import func, select
 
 from backend import booking as bk
-from backend import documents, recommend
+from backend import documents, google_auth, recommend
 from backend.config import get_settings
 from backend.db import SessionLocal
 from backend.embeddings import get_embedder
-from backend.models import ACTIVE_BOOKING_STATUSES, Faculty, UsagePattern, Venue
+from backend.gmail import GoogleMail
+from backend.models import ACTIVE_BOOKING_STATUSES, DocumentChunk, Faculty, SourceDocument, UsagePattern, Venue
 from backend.recommend import BookingRequest
 
 TOKEN_MAX_AGE = 3600
@@ -40,11 +42,15 @@ acting_faculty_id: ContextVar[int | None] = ContextVar("acting_faculty_id", defa
 # Swappable in tests.
 session_factory = SessionLocal
 embedder_factory = get_embedder
+mail_reader = GoogleMail()
 
 booking_mcp = FastMCP("venue-booking", instructions="Venues, availability and the caller's own bookings.")
 knowledge_mcp = FastMCP("venue-knowledge", instructions="Search circulars and event reports; venue details.")
 recommender_mcp = FastMCP("venue-recommender", instructions="Similar past events, seasonal patterns, ranking.")
-SERVERS = {"booking": booking_mcp, "knowledge": knowledge_mcp, "recommender": recommender_mcp}
+gmail_mcp = FastMCP("venue-gmail", instructions="The caller's own Gmail, read-only, once they have linked it.")
+drive_mcp = FastMCP("venue-drive", instructions="Circulars, reports and timetables from the Drive folder, read-only.")
+SERVERS = {"booking": booking_mcp, "knowledge": knowledge_mcp, "recommender": recommender_mcp, "gmail": gmail_mcp,
+           "drive": drive_mcp}
 
 
 class ToolError(Exception):
@@ -276,6 +282,73 @@ def rank_venues(request: BookingRequest, ctx: Context = None) -> dict:
     with session_factory() as db:
         _actor(db, ctx)
         return _json(recommend.recommend(db, embedder_factory(), request))
+
+
+# --- gmail --------------------------------------------------------------------------------------------
+
+
+def _mail(fn):
+    try:
+        return fn()
+    except google_auth.NotLinked as e:
+        raise ToolError(f"{e} Link it from the Assistant page.") from e
+
+
+@gmail_mcp.tool()
+def search_my_mail(query: str, newer_than_days: int = 60, max_results: int = 5, ctx: Context = None) -> list[dict]:
+    """Search the caller's own Gmail (Gmail search syntax, e.g. 'guest lecture'). Sender, subject, date, snippet."""
+    with session_factory() as db:
+        actor = _actor(db, ctx)
+    q = f"{query} newer_than:{max(1, newer_than_days)}d".strip()
+    return _mail(lambda: mail_reader.search(actor.id, q, min(max(max_results, 1), 10)))
+
+
+@gmail_mcp.tool()
+def read_message(message_id: str, ctx: Context = None) -> dict:
+    """The full thread a message belongs to, as plain text. Use only for a mail the faculty picked."""
+    with session_factory() as db:
+        actor = _actor(db, ctx)
+    return _mail(lambda: mail_reader.read(actor.id, message_id))
+
+
+# --- drive --------------------------------------------------------------------------------------------
+
+
+def _drive_link(d: SourceDocument) -> str | None:
+    return f"https://drive.google.com/file/d/{d.drive_file_id}/view" if d.drive_file_id else None
+
+
+@drive_mcp.tool()
+def list_documents(kind: str | None = None, name_contains: str | None = None, limit: int = 20,
+                   ctx: Context = None) -> list[dict]:
+    """Documents read from the Drive folder. kind is circular, report or timetable."""
+    with session_factory() as db:
+        _actor(db, ctx)
+        q = select(SourceDocument).order_by(SourceDocument.modified_at.desc().nulls_last(), SourceDocument.id.desc())
+        if kind:
+            q = q.where(SourceDocument.kind == kind)
+        if name_contains:
+            q = q.where(SourceDocument.name.ilike(f"%{name_contains}%"))
+        return _json([{"name": d.name, "kind": d.kind, "modified_at": d.modified_at, "link": _drive_link(d)}
+                      for d in db.scalars(q.limit(min(limit, 50)))])
+
+
+@drive_mcp.tool()
+def read_document(name: str, ctx: Context = None) -> dict:
+    """The text of one document by its file name (as list_documents or search_knowledge gives it)."""
+    with session_factory() as db:
+        _actor(db, ctx)
+        d = db.scalar(select(SourceDocument).where(SourceDocument.name == name)) or \
+            db.scalar(select(SourceDocument).where(SourceDocument.name.ilike(f"%{name}%")))
+        if d is None:
+            raise ToolError(f"No document called {name!r}. Use list_documents to see the names.")
+        lines: list[str] = []
+        for c in db.scalars(select(DocumentChunk).where(DocumentChunk.source_document_id == d.id)
+                            .order_by(DocumentChunk.chunk_index)):
+            new = c.text.split("\n")[1:]  # each chunk starts with the document title
+            overlap = next((k for k in range(min(len(new), len(lines)), 0, -1) if lines[-k:] == new[:k]), 0)
+            lines += new[overlap:]
+        return {"name": d.name, "kind": d.kind, "link": _drive_link(d), "text": "\n".join(lines)[:12000]}
 
 
 def main() -> None:

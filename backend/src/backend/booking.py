@@ -31,7 +31,7 @@ from backend.models import (
 )
 
 MINOR_FIELDS = ("title", "description", "expected_headcount", "audience", "requirements", "guest_profile")
-NOTIFY_CHANNELS = ("email", "in_app")  # calendar invites arrive in Phase 4
+NOTIFY_CHANNELS = ("email", "calendar", "in_app")
 SEASON_MARGIN_WEEKS = 1  # warn a week either side of a seasonal pattern; past dates drift a little
 
 

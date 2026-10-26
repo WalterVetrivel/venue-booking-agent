@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -52,13 +52,28 @@ def run_jobs() -> None:
         bk.remind_in_charges(db)
 
 
+def run_notifications() -> None:
+    """Send queued email and calendar notices once the admin has linked mail and calendar access."""
+    from backend import google_auth, notify
+
+    if get_settings().notify_mode == "off" or not {google_auth.GMAIL_SEND, google_auth.CALENDAR} <= \
+            google_auth.granted(google_auth.system_token_file()):
+        return
+    try:
+        sender = notify.GoogleSender()
+        with SessionLocal.begin() as db:
+            notify.deliver(db, sender)
+    except Exception as e:  # rows stay queued and are retried on the next run
+        print(f"Sending notices failed: {e}")
+
+
 def run_nightly() -> None:
     """Pull new documents from Drive when it is linked, then recompute seasonal patterns."""
-    from backend import drive, extract, knowledge
+    from backend import extract, google_auth, knowledge
     from backend.embeddings import get_embedder
 
     s = get_settings()
-    if s.drive_root_folder_id and drive.token_file().exists():
+    if s.drive_root_folder_id and google_auth.DRIVE in google_auth.granted(google_auth.system_token_file()):
         try:
             extractor = extract.groq_extractor() if s.groq_api_key and s.groq_extract_model else None
             knowledge.ingest_drive(get_embedder(), extractor)
@@ -73,6 +88,7 @@ async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler()
     scheduler.add_job(run_jobs, "interval", minutes=10, next_run_time=datetime.now())
     scheduler.add_job(run_nightly, "cron", hour=2)
+    scheduler.add_job(run_notifications, "interval", minutes=1)
     scheduler.start()
     async with AsyncExitStack() as stack:
         for server in mcp_servers.SERVERS.values():
@@ -399,41 +415,90 @@ def edit_slot(slot_id: int, body: SlotEdit, db: Session = Depends(get_db), admin
 # --- admin: knowledge (Drive, past events, seasonal patterns) ---------------------------------------
 
 
-@app.get("/admin/drive")
-def drive_status(admin: Faculty = Depends(require_admin)):
-    from backend import drive
+@app.get("/admin/google")
+def google_status(db: Session = Depends(get_db), admin: Faculty = Depends(require_admin)):
+    """What the linked system account may do, and how the outbox is doing."""
+    from backend import google_auth
 
     s = get_settings()
-    return {"folder_configured": bool(s.drive_root_folder_id), "linked": drive.token_file().exists()}
+    scopes = google_auth.granted(google_auth.system_token_file())
+    counts = dict(db.execute(select(Notification.status, func.count()).where(Notification.channel != "in_app")
+                             .group_by(Notification.status)).all())
+    return {"folder_configured": bool(s.drive_root_folder_id), "linked": bool(scopes),
+            "drive": google_auth.DRIVE in scopes, "mail": google_auth.GMAIL_SEND in scopes,
+            "calendar": google_auth.CALENDAR in scopes, "notify_mode": s.notify_mode, "admin_email": s.admin_email,
+            "outbox": {k: counts.get(k, 0) for k in ("queued", "sent", "failed")}}
 
 
-@app.get("/admin/drive/link")
-def drive_link(request: Request, admin: Faculty = Depends(require_admin)):
-    """Send the admin to Google to allow read-only access to Drive. Google returns to /auth/google/callback."""
-    from backend import drive
+def _oauth_redirect(request: Request, purpose: str, scopes: list[str], **extra) -> RedirectResponse:
+    from backend import google_auth
 
     try:
-        flow = drive.auth_flow()
+        flow = google_auth.flow(scopes)
     except FileNotFoundError as e:
         raise HTTPException(503, str(e)) from e
-    url, state = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
-    request.session["oauth"] = {"purpose": "drive", "state": state, "verifier": flow.code_verifier}
+    url, state = flow.authorization_url(access_type="offline", prompt="consent", **extra)
+    request.session["oauth"] = {"purpose": purpose, "state": state, "verifier": flow.code_verifier}
     return RedirectResponse(url)
+
+
+@app.get("/admin/google/link")
+def google_link(request: Request, admin: Faculty = Depends(require_admin)):
+    """Link the account that reads the Drive folder and sends notices and invites. Returns to the callback."""
+    from backend import google_auth
+
+    return _oauth_redirect(request, "system", google_auth.SYSTEM_SCOPES)
+
+
+@app.get("/gmail")
+def gmail_status(user: Faculty = Depends(current_user)):
+    from backend import gmail
+
+    return {"linked": gmail.linked(user.id)}
+
+
+@app.get("/gmail/link")
+def gmail_link(request: Request, user: Faculty = Depends(current_user)):
+    """Let the assistant read this faculty's own Gmail (read-only), for the mails they pick."""
+    from backend import google_auth
+
+    return _oauth_redirect(request, "gmail", google_auth.FACULTY_SCOPES, login_hint=user.email)
+
+
+@app.post("/gmail/unlink", status_code=204)
+def gmail_unlink(db: Session = Depends(get_db), user: Faculty = Depends(current_user)):
+    from backend import gmail
+
+    gmail.unlink(user.id)
+    user.gmail_linked = False
 
 
 @app.get("/auth/google/callback")
 def google_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None,
-                    admin: Faculty = Depends(require_admin)):
-    from backend import drive
+                    db: Session = Depends(get_db), user: Faculty = Depends(current_user)):
+    from backend import gmail, google_auth
 
-    pending = request.session.pop("oauth", None)
-    if error or not code or not pending or pending.get("state") != state:
-        return RedirectResponse("/#knowledge")
-    flow = drive.auth_flow(state=state)
+    pending = request.session.pop("oauth", None) or {}
+    purpose = pending.get("purpose")
+    back = "/#knowledge" if purpose == "system" else "/#chat"
+    if error or not code or pending.get("state") != state or purpose not in ("system", "gmail"):
+        return RedirectResponse(back)
+    if purpose == "system" and user.role != "admin":
+        raise HTTPException(403, "Only the admin can link the system account.")
+    scopes = google_auth.SYSTEM_SCOPES if purpose == "system" else google_auth.FACULTY_SCOPES
+    flow = google_auth.flow(scopes, state=state)
     flow.code_verifier = pending.get("verifier")
     flow.fetch_token(code=code)
-    drive.save_token(flow.credentials)
-    return RedirectResponse("/#knowledge")
+    if purpose == "system":
+        google_auth.save(google_auth.system_token_file(), flow.credentials)
+        return RedirectResponse(back)
+    path = google_auth.faculty_token_file(user.id)
+    google_auth.save(path, flow.credentials)
+    if gmail.address(user.id).lower() != user.email.lower():  # only your own mailbox
+        gmail.unlink(user.id)
+        return RedirectResponse("/?gmail=wrong_account#chat")
+    user.gmail_linked = True
+    return RedirectResponse(back)
 
 
 @app.get("/admin/patterns")

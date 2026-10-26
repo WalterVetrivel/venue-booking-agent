@@ -96,11 +96,20 @@ async function loadChat() {
   if (chatId()) { try { convo = await api(`/chat/sessions/${chatId()}`); } catch { setChatId(null); } }
   addBubble("assistant", GREETING);
   const msgs = convo?.messages || [];
-  msgs.forEach((m, i) => addBubble(m.role, m.content, m.data, convo.pending && i === msgs.length - 1));
+  msgs.forEach((m, i) => addBubble(m.role, m.content, m.data, i === msgs.length - 1, convo.pending));
+  showGmailState();
   $("#chat-form").elements.message.focus();
 }
 
-function addBubble(role, text, data, live = false) {
+async function showGmailState() {
+  const g = await api("/gmail").catch(() => ({ linked: false }));
+  $("#gmail-state").innerHTML = g.linked
+    ? `Gmail linked <button type="button" class="secondary small" id="gmail-unlink">Unlink</button>`
+    : `<a href="/gmail/link">Link my Gmail</a>`;
+  if (g.linked) $("#gmail-unlink").onclick = async () => { await api("/gmail/unlink", { method: "POST" }); showGmailState(); };
+}
+
+function addBubble(role, text, data, last = false, pending = false) {
   const div = document.createElement("div");
   div.className = `bubble ${role}`;
   div.innerHTML = `<div class="text">${esc(text).replace(/\n/g, "<br>")}</div>`;
@@ -114,6 +123,18 @@ function addBubble(role, text, data, live = false) {
     card.querySelector("button").onclick = () => sendChat(`Request ${o.code}`, { pick: o.code });
     div.append(card);
   }
+  for (const m of (last && data?.mails) || []) {
+    const card = document.createElement("div");
+    card.className = "option";
+    card.innerHTML = `<div><b>${esc(m.subject)}</b></div><div class="muted">${esc(m.sender)} · ${esc(m.date)}</div>
+      <div class="muted">${esc(m.snippet)}</div><button type="button" class="small">Use this mail</button>`;
+    card.querySelector("button").onclick = () => sendChat(`Use "${m.subject}"`, { use_mail: m.id });
+    div.append(card);
+  }
+  if (data?.link_gmail) {
+    div.insertAdjacentHTML("beforeend", `<div class="actions"><a href="/gmail/link"><button type="button">Link my Gmail</button></a></div>
+      <p class="muted">Read-only. I only read a mail you pick, and only that mail's text goes to the language model.</p>`);
+  }
   if (data?.nearest_free_dates?.length) {
     div.insertAdjacentHTML("beforeend", `<div class="muted">Nearest free days: ${data.nearest_free_dates.map(d =>
       `${esc(fmtDay(d.date))} (${d.venues.map(esc).join(", ")})`).join("; ")}</div>`);
@@ -121,7 +142,7 @@ function addBubble(role, text, data, live = false) {
   if (data?.bookings?.length) div.insertAdjacentHTML("beforeend", `<div class="table-wrap"><table>${data.bookings.map(b => `
     <tr><td>${esc(b.title)}</td><td>${esc(b.venue)}</td><td>${when(b)}</td><td>${statusTag(b.status)}</td>
       <td><button class="secondary small" data-open="${b.booking_id}">Open</button></td></tr>`).join("")}</table></div>`);
-  if (data?.confirm && live) {
+  if (data?.confirm && last && pending) {
     const row = document.createElement("div");
     row.className = "actions confirm";
     row.innerHTML = `<button type="button">Yes, go ahead</button><button type="button" class="secondary">No</button>`;
@@ -148,7 +169,7 @@ async function sendChat(message, action) {
     setChatId(r.session_id);
     $("#chat-log").dataset.loaded = String(r.session_id);
     typing.remove();
-    addBubble("assistant", r.reply, r.data, r.pending);
+    addBubble("assistant", r.reply, r.data, true, r.pending);
   } catch (e) {
     typing.remove();
     addBubble("assistant", e.message);
@@ -169,6 +190,11 @@ $("#chat-form").elements.message.onkeydown = e => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chat-form").requestSubmit(); }
 };
 $("#chat-new").onclick = () => { setChatId(null); loadChat(); };
+$("#chat-mail").onclick = () => sendChat("Look in my Gmail for the details", { find_mail: true });
+if (new URLSearchParams(location.search).get("gmail") === "wrong_account") {
+  setTimeout(() => toast("That wasn't the Gmail you sign in with, so I didn't link it. Pick your own account."), 500);
+  history.replaceState(null, "", "/" + location.hash);
+}
 
 // --- routing ---------------------------------------------------------------------------------------
 
@@ -440,11 +466,15 @@ function weekLabel(w, plusDays = 0) {
 }
 
 async function loadKnowledge() {
-  const drive = await api("/admin/drive");
-  $("#drive-status").textContent = !drive.folder_configured ? "Set DRIVE_ROOT_FOLDER_ID in .env first."
-    : drive.linked ? "Linked. New and changed files are read every night at 2 am." : "Not linked yet.";
-  $("#drive-link").hidden = !drive.folder_configured;
-  $("#drive-link button").textContent = drive.linked ? "Link again" : "Link Google Drive";
+  const g = await api("/admin/google");
+  const mode = { admin: `test mode: everything goes to ${g.admin_email || "ADMIN_EMAIL"} only`, live: "live: to the real people",
+                 off: "off: in-app notices only" }[g.notify_mode] || g.notify_mode;
+  $("#google-status").innerHTML = [
+    `Drive folder: ${!g.folder_configured ? "set DRIVE_ROOT_FOLDER_ID in .env first" : g.drive ? "read every night at 2 am" : "not linked"}`,
+    `Email notices: ${g.mail ? "on" : "not linked"}; calendar invites: ${g.calendar ? "on" : "not linked"} (${esc(mode)})`,
+    `Outbox: ${g.outbox.queued} waiting, ${g.outbox.sent} sent, ${g.outbox.failed} failed`,
+  ].map(x => `<li>${x}</li>`).join("");
+  $("#google-link button").textContent = g.linked && g.drive && g.mail && g.calendar ? "Link again" : "Link Google account";
 
   const pats = await api("/admin/patterns");
   $("#patterns-list").innerHTML = pats.length ? `<div class="table-wrap"><table><tr><th>Venue</th><th>Used for</th><th>Around</th><th>Seen</th><th>Evidence</th></tr>${pats.map(p => `

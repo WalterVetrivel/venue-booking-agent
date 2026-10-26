@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     drive_root_folder_id: str | None = None
     secrets_dir: Path = REPO_ROOT / "secrets"
 
+    # Notices by email and calendar invite, sent from the admin's linked Google account.
+    # admin: every mail and invite goes to ADMIN_EMAIL only, marked with who it was meant for (safe with mock data);
+    # live: to the real recipients; off: nothing is sent (in-app notices still work).
+    notify_mode: str = "admin"
+    notify_calendar_id: str = "primary"
+    app_url: str = "http://localhost:8000"  # for links in emails
+
     session_secret: str = "dev-only-change-me"
     google_client_id: str | None = None  # OAuth web client id, for Google Sign-In
     dev_login: bool = False  # allow signing in by email alone; local testing only

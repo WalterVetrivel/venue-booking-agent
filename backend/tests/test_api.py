@@ -163,4 +163,6 @@ def test_admin_knowledge_pages(people, api):
     assert admin.patch(f"/admin/past-events/{pending['id']}", json={"status": "active"}).status_code == 422
     r = admin.patch(f"/admin/past-events/{pending['id']}", json={"status": "active", "venue_id": people["cc1"]})
     assert r.json()["status"] == "active" and r.json()["venue"] == "CC1"
-    assert set(admin.get("/admin/drive").json()) == {"folder_configured", "linked"}
+    google = admin.get("/admin/google").json()
+    assert {"linked", "drive", "mail", "calendar", "notify_mode", "outbox"} <= set(google)
+    assert google["notify_mode"] in ("admin", "live", "off") and set(google["outbox"]) == {"queued", "sent", "failed"}

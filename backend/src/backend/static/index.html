@@ -44,12 +44,16 @@
       <div class="card chat">
         <div class="chat-head">
           <h2>Assistant</h2>
-          <button type="button" class="secondary small" id="chat-new">New conversation</button>
+          <span class="chat-tools">
+            <span id="gmail-state" class="muted"></span>
+            <button type="button" class="secondary small" id="chat-new">New conversation</button>
+          </span>
         </div>
         <div id="chat-log" aria-live="polite"></div>
         <form id="chat-form">
           <textarea name="message" rows="2" required
                     placeholder="e.g. A hands-on Python workshop for 50 students next Saturday, 9:30 to 12:30"></textarea>
+          <button type="button" class="secondary" id="chat-mail" title="Find the event's details in your Gmail">From my Gmail</button>
           <button>Send</button>
         </form>
       </div>
@@ -122,9 +126,10 @@
 
     <section id="view-knowledge" class="view" hidden>
       <div class="card">
-        <h2>Google Drive</h2>
-        <p id="drive-status" class="muted"></p>
-        <a id="drive-link" href="/admin/drive/link"><button type="button">Link Google Drive</button></a>
+        <h2>Google account</h2>
+        <p class="muted">One account, usually yours, reads the Drive folder and sends notices and calendar invites.</p>
+        <ul id="google-status" class="muted"></ul>
+        <a id="google-link" href="/admin/google/link"><button type="button">Link Google account</button></a>
       </div>
       <div class="card">
         <h2>Seasonal patterns</h2>

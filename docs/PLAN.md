@@ -132,8 +132,8 @@ Five small MCP servers (booking, knowledge and recommender built in Phase 3; dri
 | `booking-mcp` | `list_venues(filters)`, `check_availability(venue_ids, start, end)`, `find_free_venues(start, end, min_capacity, format, equipment)`, `create_hold(venue_id, start, end, event)`, `list_my_bookings()`, `edit_booking(id, fields)`, `request_change(id, new_venue, new_start, new_end)`, `cancel_booking(id, reason)` | Acts only on the signed-in faculty's own bookings; approvals are a human action in the UI; the agent must get an explicit yes before change and cancel calls |
 | `knowledge-mcp` | `search_knowledge(query, filters)`, `get_venue_rules(venue_id)` | Read-only |
 | `recommender-mcp` | `find_similar_events(event)`, `get_usage_patterns(venue_ids, start, end)`, `rank_venues(event, candidate_venue_ids)` | Read-only |
-| `drive-mcp` | `list_changed_files(folder)`, `read_file(id)` | Read-only, used by ingestion and for "show me the source" |
-| `gmail-mcp` | `search_my_mail(query, newer_than)`, `read_message(id)` | Read-only, runs with the signed-in faculty's own token, so it can only ever see their mail |
+| `drive-mcp` | `list_documents(kind, name_contains)`, `read_document(name)` | Read-only over the ingested Drive files, with links back to Drive, for "show me the source"; the nightly job syncs Drive itself |
+| `gmail-mcp` | `search_my_mail(query, newer_than_days)`, `read_message(id)` | Read-only, runs with the signed-in faculty's own token, so it can only ever see their mail |
 
 Calendar and email notifications are sent by the backend's notification worker, not by the agent, so a model mistake can never notify people.
 

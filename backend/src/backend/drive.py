@@ -1,4 +1,4 @@
-"""Google Drive: link the admin's account once, then mirror the data folder into a local cache.
+"""Google Drive: mirror the data folder into a local cache, using the admin's linked account (google_auth).
 
 The folder named by DRIVE_ROOT_FOLDER_ID holds subfolders `circulars`, `reports` and `timetables`.
 PDFs are downloaded as they are; Google Docs are exported as PDF. Files whose Drive checksum (or, for
@@ -11,57 +11,21 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from backend.config import REPO_ROOT, get_settings
+from backend import google_auth
+from backend.config import get_settings
 
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 KINDS = {"circulars": "circular", "reports": "report", "timetables": "timetable"}
 FOLDER = "application/vnd.google-apps.folder"
 GOOGLE_DOC = "application/vnd.google-apps.document"
 PDF = "application/pdf"
 
 
-def _path(p: Path) -> Path:
-    return p if p.is_absolute() else REPO_ROOT / p
-
-
-def token_file() -> Path:
-    return _path(get_settings().secrets_dir) / "drive.token.json"
-
-
 def cache_dir() -> Path:
     return get_settings().data_dir / "drive_cache"
 
 
-def auth_flow(state: str | None = None):
-    """The OAuth web flow for linking Drive, returning to GOOGLE_OAUTH_REDIRECT_URI."""
-    from google_auth_oauthlib.flow import Flow
-
-    s = get_settings()
-    client = _path(s.google_oauth_client_file)
-    if not client.exists():
-        raise FileNotFoundError(f"OAuth client file not found: {client}")
-    return Flow.from_client_secrets_file(str(client), scopes=SCOPES, redirect_uri=s.google_oauth_redirect_uri,
-                                         state=state)
-
-
-def save_token(credentials) -> None:
-    path = token_file()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(credentials.to_json())
-
-
 def credentials():
-    from google.auth.transport.requests import Request
-    from google.oauth2.credentials import Credentials
-
-    path = token_file()
-    if not path.exists():
-        raise RuntimeError("Drive is not linked yet. Sign in as the admin and use 'Link Google Drive'.")
-    creds = Credentials.from_authorized_user_info(json.loads(path.read_text()), SCOPES)
-    if not creds.valid:
-        creds.refresh(Request())  # raises RefreshError when the grant expired; the admin links again
-        save_token(creds)
-    return creds
+    return google_auth.system_credentials(google_auth.DRIVE)
 
 
 @dataclass

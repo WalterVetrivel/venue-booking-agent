@@ -1,6 +1,8 @@
 """The chat agent: a small LangGraph graph that turns a conversation into a venue request.
 
 Each turn: understand the message (structured output), then one of
+  find_mail search the faculty's own Gmail and show the matches (nothing is read yet),
+  use_mail  read the one mail they picked and take the event details from it,
   clarify   ask for the fields still missing,
   lookup    rank suitable free venues and explain the options,
   propose   restate a hold, change or cancellation and wait for a yes,
@@ -29,14 +31,15 @@ from backend.recommend import BookingRequest
 
 HISTORY_TURNS = 10
 ANSWER_STEPS = 4
-INTENTS = ("book", "list", "change", "cancel", "question", "yes", "no", "chat")
+INTENTS = ("book", "mail", "list", "change", "cancel", "question", "yes", "no", "chat")
 
 
 class Turn(BaseModel):
     """What the latest message means. Only details stated or changed in that message go in `request`."""
 
     intent: Literal[INTENTS] = Field(description=(
-        "book: wants a venue, gives or changes event details, or picks a venue; list: asks about their bookings; "
+        "book: wants a venue, gives or changes event details, or picks a venue; mail: wants the details taken "
+        "from their mail or Gmail, or picks one of the mails shown; list: asks about their bookings; "
         "change: move an existing booking; cancel: cancel an existing booking; question: anything about venues, "
         "rules or past events; yes / no: answers a confirmation; chat: greetings and the rest"))
     request: BookingRequest = Field(default_factory=BookingRequest)
@@ -48,6 +51,8 @@ class Turn(BaseModel):
     new_end_time: time | None = None
     reason: str | None = Field(None, description="Reason given for a cancellation")
     question: str | None = Field(None, description="The question as a standalone sentence, for question or chat")
+    mail_query: str | None = Field(None, description="For mail: a few Gmail search words, e.g. 'guest lecture AI'")
+    mail_pick: int | None = Field(None, description="For mail: the number of the mail shown last that they picked")
 
 
 class ToolFailed(Exception):
@@ -88,7 +93,8 @@ class Tools:
 
 
 ANSWER_TOOLS = {"booking": ["list_venues", "check_availability", "list_my_bookings"],
-                "knowledge": ["search_knowledge", "get_venue_rules"], "recommender": ["get_usage_patterns"]}
+                "knowledge": ["search_knowledge", "get_venue_rules"], "recommender": ["get_usage_patterns"],
+                "drive": ["list_documents", "read_document"]}
 
 
 class AgentLLM(Protocol):
@@ -101,10 +107,12 @@ class AgentLLM(Protocol):
 
 class State(TypedDict, total=False):
     message: str
-    action: dict | None  # a button press from the UI: {"pick": code} or {"confirm": bool}
+    action: dict | None  # a button press: {"pick": code}, {"confirm": bool}, {"find_mail": true}, {"use_mail": id}
     history: list[dict]
     draft: dict
     options: list[str]
+    mails: list[dict]  # mails shown last: id, subject, sender
+    mail_id: str | None
     pending: dict | None
     bookings: list[dict]
     turn: dict
@@ -129,6 +137,17 @@ def _clarify(r: BookingRequest) -> str:
     lead = "Happy to help with that. " if not any(r.model_dump(exclude_defaults=True).values()) else ""
     joined = asks[0] if len(asks) == 1 else ", ".join(asks[:-1]) + " and " + asks[-1]
     return f"{lead}Could you tell me {joined}?"
+
+
+def _summary(r: BookingRequest) -> str:
+    """The details of a request in a phrase, to show what was read from a mail."""
+    parts = [f'"{r.title}"' if r.title else None,
+             f"{r.expected_headcount} people" if r.expected_headcount else None, r.format,
+             ", ".join(f"{d:%a %d %b %Y}" for d in sorted(r.dates)) if r.dates else None,
+             f"{r.start_time:%H:%M} to {r.end_time:%H:%M}" if r.start_time and r.end_time else None,
+             f"{r.guest_profile.replace('_', ' ')} guest" if r.guest_profile else None,
+             f"preferring {r.preferred_venue}" if r.preferred_venue else None]
+    return ", ".join(p for p in parts if p) or "nothing about a booking"
 
 
 def options_text(out: dict, r: BookingRequest) -> str:
@@ -179,6 +198,8 @@ def understand_context(s: State, bookings: list[dict], venues: list[dict]) -> st
                                                f"{v['capacity']} seats" for v in venues),
         f"Booking draft so far: {json.dumps(s.get('draft', {}))}",
         f"Venues offered last: {', '.join(s.get('options', [])) or 'none'} (\"the first one\" means the first).",
+        "Mails shown last: " + ("; ".join(f"{i}. {m['subject']} (from {m['sender']})"
+                                          for i, m in enumerate(s.get("mails", []), 1)) or "none"),
         f"Waiting for a yes or no on: {s['pending']['summary'] if s.get('pending') else 'nothing'}",
         "The faculty's upcoming bookings: " + (json.dumps([{k: b[k] for k in ("booking_id", "title", "venue",
                                                                              "start", "status")}
@@ -193,13 +214,13 @@ class Agent:
     def __init__(self, llm: AgentLLM, tools: Tools):
         self.llm, self.tools = llm, tools
         g = StateGraph(State)
-        for name in ("understand", "clarify", "lookup", "propose_hold", "propose_manage", "execute", "decline",
-                     "list_bookings", "answer"):
+        for name in ("understand", "find_mail", "use_mail", "clarify", "lookup", "propose_hold", "propose_manage",
+                     "execute", "decline", "list_bookings", "answer"):
             g.add_node(name, getattr(self, name))
         g.add_edge(START, "understand")
         g.add_conditional_edges("understand", self.route)
-        for name in ("clarify", "lookup", "propose_hold", "propose_manage", "execute", "decline", "list_bookings",
-                     "answer"):
+        for name in ("find_mail", "use_mail", "clarify", "lookup", "propose_hold", "propose_manage", "execute",
+                     "decline", "list_bookings", "answer"):
             g.add_edge(name, END)
         self.graph = g.compile()
 
@@ -215,11 +236,18 @@ class Agent:
             turn = Turn(intent="yes" if action["confirm"] else "no")
         elif "pick" in action:
             turn = Turn(intent="book", venue=action["pick"])
+        elif "find_mail" in action or "use_mail" in action:
+            turn = Turn(intent="mail")
         else:
             venues = await self.tools.call("booking", "list_venues")
             turn = self.llm.understand(understand_context(s, bookings, venues),
                                        s.get("history", [])[-HISTORY_TURNS:], s["message"])
-        out: dict = {"turn": turn.model_dump(mode="json"), "bookings": bookings, "data": None}
+        out: dict = {"turn": turn.model_dump(mode="json"), "bookings": bookings, "data": None, "mail_id": None}
+        mails = s.get("mails", [])
+        if "use_mail" in action:
+            out["mail_id"] = action["use_mail"]
+        elif turn.intent == "mail" and turn.mail_pick and 0 < turn.mail_pick <= len(mails):
+            out["mail_id"] = mails[turn.mail_pick - 1]["id"]
         if turn.intent == "book":
             stated = {k: v for k, v in turn.request.model_dump(mode="json").items() if v not in (None, [], "")}
             if stated:
@@ -239,7 +267,42 @@ class Agent:
             return "propose_manage"
         if t.intent == "list":
             return "list_bookings"
+        if t.intent == "mail":
+            return "use_mail" if s.get("mail_id") else "find_mail"
         return "answer"
+
+    # Mail -------------------------------------------------------------------------------------------------
+
+    async def find_mail(self, s: State) -> dict:
+        t, r = Turn(**s["turn"]), BookingRequest(**s.get("draft", {}))
+        query = t.mail_query or r.title or (r.category or "").replace("_", " ")
+        try:
+            mails = await self.tools.call("gmail", "search_my_mail", query=query)
+        except ToolFailed as e:
+            return {"reply": f"I can't look in your mail yet: {e}", "pending": None, "data": {"link_gmail": True}}
+        if not mails:
+            return {"reply": f"I didn't find a recent mail matching \"{query}\". Tell me a few words from its subject "
+                             "and I'll look again.", "pending": None, "mails": []}
+        return {"reply": "These mails look relevant. Pick the one with the event details; I'll read only that one.",
+                "pending": None, "mails": [{k: m[k] for k in ("id", "subject", "sender")} for m in mails],
+                "data": {"mails": mails}}
+
+    async def use_mail(self, s: State) -> dict:
+        try:
+            mail = await self.tools.call("gmail", "read_message", message_id=s["mail_id"])
+        except ToolFailed as e:
+            return {"reply": f"I couldn't read that mail: {e}", "pending": None, "data": {"link_gmail": True}}
+        venues = await self.tools.call("booking", "list_venues")
+        turn = self.llm.understand(understand_context(s, [], venues), [],
+                                   f"Use the details in this mail for my booking:\n\n{mail['text']}")
+        stated = {k: v for k, v in turn.request.model_dump(mode="json").items() if v not in (None, [], "")}
+        draft = {**s.get("draft", {}), **stated}
+        r = BookingRequest(**draft)
+        after = {**s, "draft": draft, "turn": turn.model_dump(mode="json")}
+        nxt = await (self.clarify(after) if r.missing() else self.lookup(after))
+        return {**nxt, "draft": draft, "mails": [],
+                "reply": f"From \"{mail['subject']}\" I read: {_summary(BookingRequest(**stated))}. Tell me if "
+                         f"anything is wrong.\n\n{nxt['reply']}"}
 
     # Booking ----------------------------------------------------------------------------------------------
 
@@ -383,6 +446,8 @@ conversation and fill in the schema. Put in `request` only details the latest me
 rest empty. Dates: every day of the event. A talk, lecture, seminar or address is format "talk"; anything where
 participants use computers is "hands-on". Significance 3 means a chief guest, VIP or institution-level event.
 A venue named when the faculty asks to book or picks one goes in `venue`, even with no other details.
+When the faculty refers to a mail ("it's in my mail", "check my Gmail", "use the second mail"), the intent is mail.
+When the message is the text of a mail, read the event it is about: who is coming, when, how many, what kind.
 
 {context}"""
 
@@ -456,6 +521,6 @@ async def chat(db: Session, faculty: Faculty, llm: AgentLLM, message: str, sessi
         out, reply, data = state, f"Sorry, something went wrong on my side ({type(e).__name__}). Please try again.", None
     cs.messages = [*cs.messages, {"role": "user", "content": message},
                    {"role": "assistant", "content": reply, "data": data}]
-    cs.state = {k: out.get(k) for k in ("draft", "options", "pending") if out.get(k) is not None}
+    cs.state = {k: out.get(k) for k in ("draft", "options", "mails", "pending") if out.get(k) is not None}
     db.flush()
     return {"session_id": cs.id, "reply": reply, "data": data, "pending": bool(out.get("pending"))}

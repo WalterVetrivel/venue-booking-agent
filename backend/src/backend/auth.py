@@ -84,4 +84,5 @@ def require_admin(user: Faculty = Depends(current_user)) -> Faculty:
 
 
 def _out(f: Faculty) -> dict:
-    return {"id": f.id, "email": f.email, "name": f.name, "department": f.department, "role": f.role}
+    return {"id": f.id, "email": f.email, "name": f.name, "department": f.department, "role": f.role,
+            "gmail_linked": f.gmail_linked}

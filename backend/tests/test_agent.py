@@ -48,7 +48,7 @@ def w(db, monkeypatch):
                         sessionmaker(bind=db.connection(), join_transaction_mode="create_savepoint",
                                      expire_on_commit=False))
     monkeypatch.setattr(mcp_servers, "embedder_factory", FakeEmbedder)
-    db.me = db.scalar(select(Faculty).where(Faculty.email == "divya.g.cse@example.com"))
+    db.me = db.scalar(select(Faculty).where(Faculty.email == "sekar.a@example.com"))
     return db
 
 
@@ -160,6 +160,6 @@ async def test_questions_go_through_the_knowledge_tools(w):
 async def test_sessions_are_private(w):
     llm = ScriptedLLM(book(title="x"), book(title="y"))
     r = await say(w, w.me, llm, "hello")
-    other = w.scalar(select(Faculty).where(Faculty.email == "saravanan.m.cse@example.com"))
+    other = w.scalar(select(Faculty).where(Faculty.email == "babu.g@example.com"))
     r2 = await say(w, other, llm, "hi", r["session_id"])
     assert r2["session_id"] != r["session_id"]

@@ -50,16 +50,43 @@ LAB_SW = {
     "CC11": ["Docker Desktop", "AWS CLI", "Terraform", "VirtualBox", "Node.js"],
 }
 
-IN_CHARGES = {
-    "labs_a": ("Mr. R. Senthilnathan", "senthilnathan.r@example.com"),
-    "labs_b": ("Mrs. P. Kavitha", "kavitha.p@example.com"),
-    "A Block SH": ("Mr. M. Ilango", "ilango.m@example.com"),
-    "CSE PG SH": ("Dr. S. Anitha", "anitha.s@example.com"),
-    "D Block SH": ("Mr. V. Muthukumar", "muthukumar.v@example.com"),
-    "E Block SH": ("Mr. K. Dhanasekar", "dhanasekar.k@example.com"),
-    "MBA SH": ("Dr. N. Revathi", "revathi.n@example.com"),
-    "COE": ("Mr. A. Prabhu", "prabhu.a@example.com"),
-}
+# KIOT faculty (CSE department, as given by the admin). Everyone at KIOT in the mock data is drawn from this list;
+# only outside guests (industry, other institutions, government) are made up. Emails are placeholders.
+KIOT_FACULTY = [
+    ("Dr. P. Rajendran", "Prof. & HoD"), ("Dr. V. Kumar", "Professor"), ("Dr. R. Kumar", "Professor"),
+    ("Dr. S. Sakthivel", "Assoc. Prof."), ("Dr. P. Vijayalakshmi", "Assoc. Prof."), ("Dr. M. Sakthivel", "Assoc. Prof."),
+    ("Dr. I. Rajesh", "Asst. Prof."), ("Mr. K. Ravikumar", "Asst. Prof."), ("Mr. T. Karthikeyan", "Asst. Prof."),
+    ("Dr. P. Malarvizhi", "Asst. Prof."), ("Mrs. K. Saranya", "Asst. Prof."), ("Mr. M. Senthilkumar", "Asst. Prof."),
+    ("Mrs. R. Saranya", "Asst. Prof."), ("Mr. A. Sekar", "Asst. Prof."), ("Mr. P. Nareshkumar", "Asst. Prof."),
+    ("Mr. P. Sasikumar", "Asst. Prof."), ("Mr. G. Babu", "Asst. Prof."), ("Mr. K. Boopathi", "Asst. Prof."),
+    ("Mr. K. Praveen", "Asst. Prof."), ("Mr. R. Sivaguru", "Asst. Prof."), ("Mrs. N. Subha", "Asst. Prof."),
+    ("Mrs. D. Ramya", "Asst. Prof."), ("Mr. P. Ganeshan", "Asst. Prof."), ("Mrs. S. Deepa", "Asst. Prof."),
+    ("Dr. M. Lakshaga Jyothi", "Asst. Prof."), ("Mrs. V. SathiyaPriya", "Asst. Prof."), ("Mrs. B. Ashwini", "Asst. Prof."),
+    ("Mrs. K. Gowthami", "Asst. Prof."), ("Mr. M. K. Sampath", "Asst. Prof."), ("Mr. T. Palani Raja", "Asst. Prof."),
+    ("Mrs. R. Pushpalatha", "Asst. Prof."), ("Mrs. E. Kiruthika", "Asst. Prof."), ("Mrs. M. Saranya", "Asst. Prof."),
+    ("Ms. P. Vikneshwary", "Asst. Prof."), ("Mrs. G. Eswari @ Petchiammal", "Asst. Prof."),
+    ("Mr. S. Walter Vetrivel", "Asst. Prof."), ("Mr. C. Siva", "Asst. Prof."), ("Mrs. S. Sowndarya", "Asst. Prof."),
+    ("Mrs. G. Pavithra", "Asst. Prof."), ("Mrs. S. Manju", "Asst. Prof."), ("Mrs. V. Anitha", "Asst. Prof."),
+    ("Mr. R. Krishnakumar", "Asst. Prof."), ("Ms. A. Prabha", "Asst. Prof."), ("Mrs. T. Sowndharya", "Asst. Prof."),
+    ("Mr. C. Aravindan", "Asst. Prof."),
+]
+ADMIN_NAME = "Mr. S. Walter Vetrivel"
+SHORT_DESIG = {"Prof. & HoD": "Prof & HoD", "Professor": "Prof", "Assoc. Prof.": "ASP", "Asst. Prof.": "AP"}
+
+
+def email_of(name):
+    """Placeholder address: surname.initials@example.com, e.g. kumar.v@example.com."""
+    parts = name.split(" @ ")[0].split()[1:]
+    initials = "".join(p[0] for p in parts if p.endswith("."))
+    surname = "".join(p for p in parts if not p.endswith("."))
+    return f"{surname.lower()}.{initials.lower()}@example.com"
+
+
+# Who approves each venue. Placeholders from the faculty list until the real in-charges are known.
+IN_CHARGES = {k: (n, email_of(n)) for k, n in {
+    "labs_a": "Mr. K. Ravikumar", "labs_b": "Mr. T. Karthikeyan", "A Block SH": "Dr. I. Rajesh",
+    "CSE PG SH": "Dr. P. Rajendran", "D Block SH": "Dr. M. Sakthivel", "E Block SH": "Dr. S. Sakthivel",
+    "MBA SH": "Dr. P. Vijayalakshmi", "COE": "Dr. P. Malarvizhi"}.items()}
 
 
 def build_venues():
@@ -109,7 +136,7 @@ def build_venues():
 
 
 # --------------------------------------------------------------------------
-# People (all fictional)
+# People: KIOT faculty from the list above; outside guests are fictional
 # --------------------------------------------------------------------------
 
 FIRST = ["Arun", "Priya", "Karthik", "Divya", "Suresh", "Lakshmi", "Vignesh", "Meena", "Rajesh", "Kavya", "Manoj",
@@ -127,20 +154,23 @@ def person(rng, title=None):
     return f"{t} {rng.choice(INIT)}. {name}"
 
 
+def kiot_person(rng):
+    """Someone from the faculty list, with their designation. Uses the same two draws as person(), so the rest of
+    the generated data stays the same."""
+    i = FIRST.index(rng.choice(FIRST)) * len(INIT) + INIT.index(rng.choice(INIT))
+    name, desig = KIOT_FACULTY[i % len(KIOT_FACULTY)]
+    return f"{name}, {SHORT_DESIG[desig]}/CSE"
+
+
 def build_faculty(rng):
-    rows = [{"email": "ADMIN_EMAIL (from .env)", "name": "Walter (admin)", "department": "CSE", "role": "admin"}]
-    seen = set()
-    for ic_name, ic_email in IN_CHARGES.values():
-        if ic_email in seen:
-            continue
-        seen.add(ic_email)
-        rows.append({"email": ic_email, "name": ic_name, "department": "Facilities", "role": "in_charge"})
-    for d in DEPTS:
-        for _ in range(3):
-            n = person(rng)
-            slug = n.split()[-1].lower() + "." + n.split()[1][0].lower()
-            rows.append({"email": f"{slug}.{d.lower().replace('&', '')}@example.com", "name": n,
-                         "department": d, "role": "faculty"})
+    rows = [{"email": "ADMIN_EMAIL (from .env)", "name": ADMIN_NAME, "department": "CSE", "role": "admin"}]
+    in_charge = {n for n, _ in IN_CHARGES.values()}
+    for _ in range(len(DEPTS) * 3):  # the draws the old made-up list used, so the rest stays the same
+        person(rng)
+    for name, _ in KIOT_FACULTY:
+        if name != ADMIN_NAME:
+            rows.append({"email": email_of(name), "name": name, "department": "CSE",
+                         "role": "in_charge" if name in in_charge else "faculty"})
     return rows
 
 
@@ -262,12 +292,12 @@ def render_timetable(path, cls, plan, rng):
     st = ParagraphStyle("c", fontName="Times-Roman", fontSize=8, leading=9, alignment=TA_CENTER)
     stb = ParagraphStyle("cb", parent=st, fontName="Times-Bold", fontSize=9, leading=11)
     P = lambda t, s=st: Paragraph(t.replace("&", "&amp;"), s)
-    advisor = person(rng)
+    advisor = kiot_person(rng)
     head = [
         [P(f"{COLLEGE.title()}, Salem-637504<br/>(An Autonomous Institution)", stb)] + [""] * 10 + [P("Version<br/>1")],
         [P(f"Department of {DEPT_FULL[dept]}", stb)] + [""] * 10 + [P("Date<br/>19.06.2026")],
         [P("TIME TABLE (2026-27 ODD)", stb)] + [""] * 10 + [P("Wef: 01.07.2026")],
-        [P(f"Yr/Sem/Sec: {year} YR / {SEM[year]} SEM / {sec}")] + [""] * 5 + [P(f"Class Advisor: {advisor}, AP/{dept}")] + [""] * 4 + [P("HALL NO.: -")],
+        [P(f"Yr/Sem/Sec: {year} YR / {SEM[year]} SEM / {sec}")] + [""] * 5 + [P(f"Class Advisor: {advisor}")] + [""] * 4 + [P("HALL NO.: -")],
         [P("Period"), P("1"), P("2"), P("Break"), P("3"), P("4"), P("Lunch"), P("5"), P("6"), P("Break"), P("7"), P("8")],
         [P("Day/Time"), P(PERIODS[0]), P(PERIODS[1]), P("10.40-10.55"), P(PERIODS[2]), P(PERIODS[3]), P("12.35-01.25"),
          P(PERIODS[4]), P(PERIODS[5]), P("02.55-03.10"), P(PERIODS[6]), P(PERIODS[7])],
@@ -304,11 +334,11 @@ def render_timetable(path, cls, plan, rng):
     rows = [[P("S.No", stb), P("Acronym", stb), P("Name of the Subject", stb), P("Name of the Faculty", stb), P("Periods/week", stb)]]
     n = 1
     for a, name in cur["theory"]:
-        rows.append([P(str(n)), P(a), P(name), P(f"{person(rng)}, AP/{dept}"), P("4")]); n += 1
+        rows.append([P(str(n)), P(a), P(name), P(kiot_person(rng)), P("4")]); n += 1
     for a, name, sw in cur["labs"]:
-        rows.append([P(str(n)), P(a), P(name + " (Theory cum Practical)"), P(f"{person(rng)}, AP/{dept}"), P("5")]); n += 1
-    rows += [[P(str(n)), P("AS"), P("Aptitude Skills"), P(f"{person(rng)}, AP/Maths"), P("1")],
-             [P(str(n + 1)), P("CS-I"), P("Coding Skills-I"), P(f"{person(rng)}, AP/{dept}"), P("1")],
+        rows.append([P(str(n)), P(a), P(name + " (Theory cum Practical)"), P(kiot_person(rng)), P("5")]); n += 1
+    rows += [[P(str(n)), P("AS"), P("Aptitude Skills"), P(kiot_person(rng)), P("1")],
+             [P(str(n + 1)), P("CS-I"), P("Coding Skills-I"), P(kiot_person(rng)), P("1")],
              [P(str(n + 2)), P("LIB"), P("Library Hour"), P(advisor + f", AP/{dept}"), P("1")],
              [P(str(n + 3)), P("HOD/MENTOR"), P("HOD Hour/Mentor Hour"), P("All Faculty"), P("1")]]
     t2 = Table(rows, colWidths=[14 * mm, 26 * mm, 95 * mm, 90 * mm, 22 * mm])
@@ -430,7 +460,9 @@ def build_events(rng, plans):
             return [f"{person(rng, 'Dr.')}, Professor, {rng.choice(ACADEMIA)}"]
         if kind == "government":
             return [f"{person(rng, 'Thiru')}, {rng.choice(['Deputy Collector', 'Scientist-E, a national space research centre', 'Joint Director, Technical Education'])}"]
-        return [f"{person(rng)}, {rng.choice(['Principal', 'Executive Chairman', 'HoD'])}, KIOT"]
+        kiot_person(rng)  # keeps the random sequence of the earlier made-up names
+        role = rng.choice(["Principal", "Executive Chairman", "HoD"])
+        return ["Dr. P. Rajendran, Prof & HoD/CSE, KIOT" if role == "HoD" else f"The {role}, KIOT"]
 
     for y in (2023, 2024, 2025, 2026):
         jul = dt.date(y, 7, 1)
@@ -644,7 +676,7 @@ def render_circular(path, ev, circ_no, rng, S):
     story += [Spacer(1, 4 * mm), P("<u><i><b>Target Audience:</b></i></u>", S["b"]),
               P(f"&gt; {ev['audience'].replace('&', '&amp;')}" + (f" (expected about {ev['expected']} participants)." if rng.random() < 0.5 else "."), S["b"]),
               Spacer(1, 4 * mm), P("For further details, kindly contact:", S["b"]),
-              P(f"1. {person(rng)}, Coordinator, AP/{ev['organiser'] if ev['organiser'] in DEPTS else 'CSE'}", S["b"]),
+              P(f"1. {kiot_person(rng)}, Coordinator", S["b"]),
               Spacer(1, 12 * mm),
               Table([[P("<b>COORDINATOR</b>", S["c"]), P("<b>HoD</b>", S["c"]), P("<b>PRINCIPAL</b>", S["c"])]],
                     colWidths=[60 * mm] * 3, style=[("GRID", (0, 0), (-1, -1), 0.6, colors.black)]),

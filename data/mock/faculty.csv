@@ -1,34 +1,46 @@
 email,name,department,role
-ADMIN_EMAIL (from .env),Walter (admin),CSE,admin
-senthilnathan.r@example.com,Mr. R. Senthilnathan,Facilities,in_charge
-kavitha.p@example.com,Mrs. P. Kavitha,Facilities,in_charge
-ilango.m@example.com,Mr. M. Ilango,Facilities,in_charge
-anitha.s@example.com,Dr. S. Anitha,Facilities,in_charge
-muthukumar.v@example.com,Mr. V. Muthukumar,Facilities,in_charge
-dhanasekar.k@example.com,Mr. K. Dhanasekar,Facilities,in_charge
-revathi.n@example.com,Dr. N. Revathi,Facilities,in_charge
-prabhu.a@example.com,Mr. A. Prabhu,Facilities,in_charge
-divya.g.cse@example.com,Mrs. G. Divya,CSE,faculty
-saravanan.m.cse@example.com,Mr. M. Saravanan,CSE,faculty
-bala.t.cse@example.com,Mr. T. Bala,CSE,faculty
-divya.v.it@example.com,Mrs. V. Divya,IT,faculty
-meena.v.it@example.com,Mrs. V. Meena,IT,faculty
-yamuna.n.it@example.com,Mrs. N. Yamuna,IT,faculty
-sangeetha.j.aids@example.com,Mrs. J. Sangeetha,AI&DS,faculty
-pavithra.n.aids@example.com,Mrs. N. Pavithra,AI&DS,faculty
-sangeetha.t.aids@example.com,Mrs. T. Sangeetha,AI&DS,faculty
-keerthana.s.csbs@example.com,Mrs. S. Keerthana,CSBS,faculty
-mohan.k.csbs@example.com,Mr. K. Mohan,CSBS,faculty
-mohan.s.csbs@example.com,Mr. S. Mohan,CSBS,faculty
-vijay.k.ece@example.com,Mr. K. Vijay,ECE,faculty
-meena.a.ece@example.com,Mrs. A. Meena,ECE,faculty
-yamuna.b.ece@example.com,Mrs. B. Yamuna,ECE,faculty
-divya.e.eee@example.com,Mrs. E. Divya,EEE,faculty
-ramesh.b.eee@example.com,Mr. B. Ramesh,EEE,faculty
-prakash.a.eee@example.com,Mr. A. Prakash,EEE,faculty
-ramesh.v.mech@example.com,Mr. V. Ramesh,MECH,faculty
-harini.k.mech@example.com,Mrs. K. Harini,MECH,faculty
-harini.g.mech@example.com,Mrs. G. Harini,MECH,faculty
-vignesh.j.mba@example.com,Mr. J. Vignesh,MBA,faculty
-rajesh.g.mba@example.com,Mr. G. Rajesh,MBA,faculty
-uma.g.mba@example.com,Mrs. G. Uma,MBA,faculty
+ADMIN_EMAIL (from .env),Mr. S. Walter Vetrivel,CSE,admin
+rajendran.p@example.com,Dr. P. Rajendran,CSE,in_charge
+kumar.v@example.com,Dr. V. Kumar,CSE,faculty
+kumar.r@example.com,Dr. R. Kumar,CSE,faculty
+sakthivel.s@example.com,Dr. S. Sakthivel,CSE,in_charge
+vijayalakshmi.p@example.com,Dr. P. Vijayalakshmi,CSE,in_charge
+sakthivel.m@example.com,Dr. M. Sakthivel,CSE,in_charge
+rajesh.i@example.com,Dr. I. Rajesh,CSE,in_charge
+ravikumar.k@example.com,Mr. K. Ravikumar,CSE,in_charge
+karthikeyan.t@example.com,Mr. T. Karthikeyan,CSE,in_charge
+malarvizhi.p@example.com,Dr. P. Malarvizhi,CSE,in_charge
+saranya.k@example.com,Mrs. K. Saranya,CSE,faculty
+senthilkumar.m@example.com,Mr. M. Senthilkumar,CSE,faculty
+saranya.r@example.com,Mrs. R. Saranya,CSE,faculty
+sekar.a@example.com,Mr. A. Sekar,CSE,faculty
+nareshkumar.p@example.com,Mr. P. Nareshkumar,CSE,faculty
+sasikumar.p@example.com,Mr. P. Sasikumar,CSE,faculty
+babu.g@example.com,Mr. G. Babu,CSE,faculty
+boopathi.k@example.com,Mr. K. Boopathi,CSE,faculty
+praveen.k@example.com,Mr. K. Praveen,CSE,faculty
+sivaguru.r@example.com,Mr. R. Sivaguru,CSE,faculty
+subha.n@example.com,Mrs. N. Subha,CSE,faculty
+ramya.d@example.com,Mrs. D. Ramya,CSE,faculty
+ganeshan.p@example.com,Mr. P. Ganeshan,CSE,faculty
+deepa.s@example.com,Mrs. S. Deepa,CSE,faculty
+lakshagajyothi.m@example.com,Dr. M. Lakshaga Jyothi,CSE,faculty
+sathiyapriya.v@example.com,Mrs. V. SathiyaPriya,CSE,faculty
+ashwini.b@example.com,Mrs. B. Ashwini,CSE,faculty
+gowthami.k@example.com,Mrs. K. Gowthami,CSE,faculty
+sampath.mk@example.com,Mr. M. K. Sampath,CSE,faculty
+palaniraja.t@example.com,Mr. T. Palani Raja,CSE,faculty
+pushpalatha.r@example.com,Mrs. R. Pushpalatha,CSE,faculty
+kiruthika.e@example.com,Mrs. E. Kiruthika,CSE,faculty
+saranya.m@example.com,Mrs. M. Saranya,CSE,faculty
+vikneshwary.p@example.com,Ms. P. Vikneshwary,CSE,faculty
+eswari.g@example.com,Mrs. G. Eswari @ Petchiammal,CSE,faculty
+siva.c@example.com,Mr. C. Siva,CSE,faculty
+sowndarya.s@example.com,Mrs. S. Sowndarya,CSE,faculty
+pavithra.g@example.com,Mrs. G. Pavithra,CSE,faculty
+manju.s@example.com,Mrs. S. Manju,CSE,faculty
+anitha.v@example.com,Mrs. V. Anitha,CSE,faculty
+krishnakumar.r@example.com,Mr. R. Krishnakumar,CSE,faculty
+prabha.a@example.com,Ms. A. Prabha,CSE,faculty
+sowndharya.t@example.com,Mrs. T. Sowndharya,CSE,faculty
+aravindan.c@example.com,Mr. C. Aravindan,CSE,faculty

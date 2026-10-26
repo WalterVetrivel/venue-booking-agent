@@ -12,7 +12,7 @@ from conftest import FakeEmbedder
 
 IST = ZoneInfo("Asia/Kolkata")
 pytestmark = pytest.mark.anyio
-FACULTY = "divya.g.cse@example.com"
+FACULTY = "sekar.a@example.com"
 
 
 @pytest.fixture
@@ -91,7 +91,7 @@ async def test_unknown_caller_is_refused(servers, monkeypatch):
 
 async def test_cannot_cancel_someone_elses_booking(servers, monkeypatch):
     held = await call(mcp_servers.booking_mcp, "create_hold", request=REQUEST, venue_code="D Block SH")
-    monkeypatch.setenv("ACTING_EMAIL", "saravanan.m.cse@example.com")
+    monkeypatch.setenv("ACTING_EMAIL", "babu.g@example.com")
     with pytest.raises(RuntimeError):
         await call(mcp_servers.booking_mcp, "cancel_booking", booking_id=held["bookings"][0]["booking_id"])
 
